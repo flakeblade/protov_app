@@ -1,0 +1,101 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-black));
+}
+
+.scrollStage {
+  flex: 1;
+}
+
+.scrollContainer {
+  position: relative;
+}
+
+.scrollLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--mantine-spacing-xl);
+  align-items: start;
+}
+
+.textPanels {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel {
+  display: flex;
+  align-items: center;
+  padding: var(--mantine-spacing-xl) 0;
+  box-sizing: border-box;
+}
+
+.canvasSpacer {
+  min-height: 1px;
+}
+
+.fixedCanvasWrap {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  height: calc(100vh - 60px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.fixedCanvasContainer {
+  height: 100%;
+}
+
+.fixedCanvasGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--mantine-spacing-xl);
+  height: 100%;
+  align-items: center;
+}
+
+.fixedCanvas {
+  grid-column: 2;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+
+@media (max-width: 48em) {
+  .scrollLayout,
+  .fixedCanvasGrid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .panel {
+    min-height: auto !important;
+    padding: var(--mantine-spacing-xl) 0 var(--mantine-spacing-md);
+  }
+
+  .panel:first-child {
+    padding-top: var(--mantine-spacing-lg);
+  }
+
+  .canvasSpacer {
+    display: none;
+  }
+
+  .fixedCanvasWrap {
+    position: relative;
+    top: auto;
+    height: 42vh;
+    min-height: 280px;
+    pointer-events: auto;
+  }
+
+  .fixedCanvas {
+    grid-column: 1;
+    height: 100%;
+  }
+}

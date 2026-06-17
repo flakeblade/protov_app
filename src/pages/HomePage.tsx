@@ -1,45 +1,70 @@
-import { Button, Center, Container, Group, Stack, Text, Title } from '@mantine/core'
-import { IconFlask, IconBook } from '@tabler/icons-react'
-import { Link } from 'react-router-dom'
-import { Logo } from '../lab/components/logo'
+import { lazy, Suspense, useRef } from 'react'
+import { Container } from '@mantine/core'
+import { HomeNavbar } from '../components/home/HomeNavbar'
+import { HeroRotatingText } from '../components/home/HeroRotatingText'
+import { HeroScrollPanel } from '../components/home/HeroScrollPanel'
+import { HomeFooter } from '../components/home/HomeFooter'
+import { HeroSceneFallback } from '../components/home/HeroSceneFallback'
+import { useScrollStageProgress } from '../hooks/useHeroScrollProgress'
+import classes from './HomePage.module.css'
+
+const HeroScene = lazy(() => import('../components/home/HeroScene'))
+
+const PANEL_HEIGHT = 'calc(100vh - 60px)'
 
 export default function HomePage() {
+  const scrollStageRef = useRef<HTMLElement>(null)
+  const scrollProgress = useScrollStageProgress(scrollStageRef)
+
   return (
-    <Container size="sm" py="xl">
-      <Center>
-        <Stack align="center" gap="xl" maw={480}>
-          <Logo height={32} />
+    <div className={classes.page}>
+      <HomeNavbar />
 
-          <Stack align="center" gap="xs">
-            <Title order={1} ta="center">
-              ProtoV
-            </Title>
-            <Text c="dimmed" ta="center" size="lg">
-              Lab power supply control and documentation — welcome page placeholder.
-            </Text>
-          </Stack>
+      <div className={classes.fixedCanvasWrap}>
+        <Container size="xl" px="md" className={classes.fixedCanvasContainer}>
+          <div className={classes.fixedCanvasGrid}>
+            <div className={classes.fixedCanvas}>
+              <Suspense fallback={<HeroSceneFallback />}>
+                <HeroScene scrollProgress={scrollProgress} />
+              </Suspense>
+            </div>
+          </div>
+        </Container>
+      </div>
 
-          <Group>
-            <Button
-              component={Link}
-              to="/lab"
-              size="md"
-              leftSection={<IconFlask size={18} />}
-            >
-              Lab
-            </Button>
-            <Button
-              component={Link}
-              to="/docs"
-              size="md"
-              variant="default"
-              leftSection={<IconBook size={18} />}
-            >
-              Docs
-            </Button>
-          </Group>
-        </Stack>
-      </Center>
-    </Container>
+      <section ref={scrollStageRef} className={classes.scrollStage}>
+        <Container size="xl" px="md" className={classes.scrollContainer}>
+          <div className={classes.scrollLayout}>
+            <div className={classes.textPanels}>
+              <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
+                <HeroRotatingText />
+              </div>
+
+              <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
+                <HeroScrollPanel
+                  title="Connect to a breadboard"
+                  subtitle="ProtoV MINI plugs directly into standard breadboard power rails with dual 2×5 pin headers — USB-C powered, credit-card sized, and built for clean bench setups in the lab or field."
+                  buttonLabel="About hardware"
+                  buttonTo="/docs"
+                />
+              </div>
+
+              <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
+                <HeroScrollPanel
+                  title="Adjust power"
+                  subtitle="Set voltage and current per channel with real-time measurement — up to 20 V and 5 A per rail. Control everything from the online lab interface."
+                  buttonLabel="Open lab"
+                  buttonTo="/lab"
+                />
+              </div>
+            </div>
+
+            <div className={classes.canvasSpacer} aria-hidden />
+          </div>
+        </Container>
+      </section>
+
+      <HomeFooter />
+    </div>
   )
 }

@@ -1,0 +1,30 @@
+.footer {
+  border-top: 1px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  padding: var(--mantine-spacing-xl) 0;
+  margin-top: auto;
+}
+
+.company {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
+}
+
+.link {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
+  text-decoration: none;
+  transition: color 150ms ease;
+
+  @mixin hover {
+    color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
+  }
+}
+
+.meta {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-5));
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.6;
+}
