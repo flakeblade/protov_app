@@ -2,6 +2,9 @@ import { Box3, Group, Object3D, Vector3 } from 'three'
 
 const ISOMETRIC_DISTANCE = 6
 
+export const SCENE_ROOT_NAME = 'protov_mini'
+export const ASSEMBLY_GROUP_NAME = 'protov_mini_1'
+
 /** Standard 45° isometric camera position (equal angles onto origin). */
 export const ISOMETRIC_CAMERA_POSITION: [number, number, number] = [
   ISOMETRIC_DISTANCE,
@@ -13,16 +16,29 @@ export function isBreadboardNode(name: string) {
   return name.toLowerCase().startsWith('breadboard')
 }
 
-/** Keep only the product device; drop breadboard roots from packed scene.glb. */
+/**
+ * scene_backup.glb: protov_mini → protov_mini_1 assembly (+ duplicate *_1 siblings).
+ * Keeps one assembly copy and drops exploded duplicates so only a single model renders.
+ */
 export function extractDeviceRoot(scene: Object3D): Object3D | null {
-  const device = scene.children.find((child) => {
-    const name = child.name.toLowerCase()
-    return name.includes('protov') || name.includes('mini')
-  })
+  const mini =
+    scene.getObjectByName(SCENE_ROOT_NAME) ??
+    scene.children.find((child) => {
+      const name = child.name.toLowerCase()
+      return name.includes('protov') || name.includes('mini')
+    })
 
-  if (!device) return null
+  if (!mini) return null
 
-  const clone = device.clone(true)
+  const clone = mini.clone(true)
+
+  const assembly = clone.getObjectByName(ASSEMBLY_GROUP_NAME)
+  if (assembly) {
+    for (const child of [...clone.children]) {
+      if (child !== assembly) clone.remove(child)
+    }
+  }
+
   pruneBreadboardNodes(clone)
   return clone
 }
@@ -35,6 +51,24 @@ export function pruneBreadboardNodes(root: Object3D) {
   for (const obj of toRemove) {
     obj.parent?.remove(obj)
   }
+}
+
+/**
+ * Blow-up parts for vertical spread.
+ * scene_backup.glb: components inside top/bottom/pcb layers of protov_mini_1.
+ * Legacy flat exports: direct children of the device root.
+ */
+export function extractBlowUpParts(deviceRoot: Object3D): Object3D[] {
+  const assembly = deviceRoot.getObjectByName(ASSEMBLY_GROUP_NAME)
+  if (!assembly) return [...deviceRoot.children]
+
+  const parts: Object3D[] = []
+  for (const layer of assembly.children) {
+    if (isBreadboardNode(layer.name)) continue
+    parts.push(...layer.children)
+  }
+
+  return parts.length > 0 ? parts : [...assembly.children]
 }
 
 export interface NormalizedModel {
