@@ -82,19 +82,30 @@ export function dampVec3(
   }
 }
 
-export function easeOutExpo(t: number) {
-  const clamped = clamp(t, 0, 1)
-  return clamped === 1 ? 1 : 1 - 2 ** (-10 * clamped)
+/** Fast burst at start, long smooth settle into the final pose. */
+export function easeOutSnap(t: number) {
+  const x = clamp(t, 0, 1)
+  if (x === 1) return 1
+
+  const rate = 11
+  const raw = 1 - Math.exp(-rate * x)
+  const end = 1 - Math.exp(-rate)
+  return raw / end
 }
 
-/** Time-based intro pose — fast start, decelerates into the final keyframe. */
+/** Normalized intro progress (0–1) with the same snap easing as the pose. */
+export function introProgressAtElapsed(elapsed: number, duration: number) {
+  return easeOutSnap(clamp(elapsed / duration, 0, 1))
+}
+
+/** Time-based intro pose — dynamic start, decelerates into the catalyze keyframe. */
 export function introPoseAtElapsed(
   elapsed: number,
   duration: number,
   start: HeroScenePose,
   end: HeroScenePose,
 ): HeroScenePose {
-  const t = easeOutExpo(clamp(elapsed / duration, 0, 1))
+  const t = easeOutSnap(clamp(elapsed / duration, 0, 1))
   return {
     position: lerpVec3(start.position, end.position, t),
     rotation: lerpVec3(start.rotation, end.rotation, t),

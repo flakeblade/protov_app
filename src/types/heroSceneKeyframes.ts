@@ -21,6 +21,14 @@ export interface HeroSceneIntroConfig {
   duration: number
   /** blowUp value at page load before intro runs. */
   blowUpStart: number
+  /** CSS blur in px at load; eases to 0 with the intro. */
+  blurStart?: number
+}
+
+export interface HeroSceneModelOffset {
+  position: Vec3Keyframe
+  /** Euler rotation in degrees, applied around the model origin. */
+  rotation: Vec3Keyframe
 }
 
 export interface HeroSceneKeyframeConfig {
@@ -28,6 +36,10 @@ export interface HeroSceneKeyframeConfig {
   smoothing: number
   /** Vertical spread per part when blowUp = 1. */
   blowUpSpread: number
+  /** Global size multiplier applied on top of keyframe scale values. */
+  modelScale?: number
+  /** Global position/rotation offset around the model origin. */
+  modelOffset?: HeroSceneModelOffset
   /** Load-time assembly animation on the catalyze screen. */
   intro?: HeroSceneIntroConfig
   keyframes: HeroSceneKeyframe[]

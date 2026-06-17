@@ -1,15 +1,21 @@
 {
   "smoothing": 10,
-  "blowUpSpread": 0.14,
+  "blowUpSpread": 0.4,
+  "modelScale": 1.5,
+  "modelOffset": {
+    "position": { "x": -0.4, "y": 2.5, "z": 0.4 },
+    "rotation": { "x": 0, "y": 0, "z": 0 }
+  },
   "intro": {
     "duration": 2.5,
-    "blowUpStart": 1
+    "blowUpStart": 10,
+    "blurStart": 10
   },
   "keyframes": [
     {
       "id": "catalyze",
       "scroll": 0,
-      "position": { "x": -0.4, "y": 2, "z": 0.4 },
+      "position": { "x": 0, "y": 0, "z": 0 },
       "rotation": { "x": 0, "y": 0, "z": 0 },
       "scale": 1,
       "blowUp": 0
@@ -17,7 +23,7 @@
     {
       "id": "connect-breadboard",
       "scroll": 0.333,
-      "position": { "x": -0.4, "y": 2, "z": 0.4 },
+      "position": { "x": 0, "y": 0, "z": 0 },
       "rotation": { "x": 0, "y": 0, "z": 0 },
       "scale": 1,
       "blowUp": 0.001
@@ -25,7 +31,7 @@
     {
       "id": "adjust-power",
       "scroll": 0.666,
-      "position": { "x": -0.4, "y": 2, "z": 0.4 },
+      "position": { "x": 0, "y": 0, "z": 0 },
       "rotation": { "x": 0, "y": 0, "z": 0 },
       "scale": 1,
       "blowUp": 0
@@ -33,7 +39,7 @@
     {
       "id": "end",
       "scroll": 1,
-      "position": { "x": -0.4, "y": 2, "z": 0.4 },
+      "position": { "x": 0, "y": 0, "z": 0 },
       "rotation": { "x": 0, "y": 0, "z": 0 },
       "scale": 1,
       "blowUp": 0

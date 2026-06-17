@@ -1,4 +1,4 @@
-import { Suspense, use, useLayoutEffect, useMemo, useRef } from 'react'
+import { Suspense, use, useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
 import { useComputedColorScheme } from '@mantine/core'
@@ -20,6 +20,7 @@ import keyframeData from '../../data/heroSceneKeyframes.json'
 import {
   dampPose,
   introPoseAtElapsed,
+  introProgressAtElapsed,
   interpolatePoseAtScroll,
   poseFromKeyframe,
 } from '../../lib/heroKeyframeInterpolation'
@@ -32,8 +33,13 @@ import {
 } from './heroSceneUtils'
 import classes from './HeroScene.module.css'
 
-const EDGE_THRESHOLD = 25
+const EDGE_THRESHOLD = 10
 const KEYFRAME_CONFIG = keyframeData as HeroSceneKeyframeConfig
+const MODEL_SCALE = KEYFRAME_CONFIG.modelScale ?? 1
+const MODEL_OFFSET = KEYFRAME_CONFIG.modelOffset ?? {
+  position: { x: 0, y: 0, z: 0 },
+  rotation: { x: 0, y: 0, z: 0 },
+}
 const CATALYZE_KEYFRAME =
   KEYFRAME_CONFIG.keyframes.find((keyframe) => keyframe.id === 'catalyze') ??
   KEYFRAME_CONFIG.keyframes[0]
@@ -78,12 +84,40 @@ function IsometricCamera() {
   )
 }
 
+function IntroBlurController({
+  viewportRef,
+  introElapsed,
+}: {
+  viewportRef: RefObject<HTMLDivElement | null>
+  introElapsed: RefObject<number>
+}) {
+  useFrame(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const intro = KEYFRAME_CONFIG.intro
+    if (!intro?.blurStart) {
+      viewport.style.filter = ''
+      return
+    }
+
+    const progress = introProgressAtElapsed(introElapsed.current, intro.duration)
+    const blurPx = intro.blurStart * (1 - progress)
+
+    viewport.style.filter = blurPx > 0.05 ? `blur(${blurPx}px)` : ''
+  })
+
+  return null
+}
+
 function DeviceModel({
   scrollProgress,
   edgeColor,
+  introElapsed,
 }: {
   scrollProgress: number
   edgeColor: string
+  introElapsed: RefObject<number>
 }) {
   use(MeshoptDecoder.ready)
 
@@ -97,7 +131,6 @@ function DeviceModel({
     ...poseFromKeyframe(CATALYZE_KEYFRAME),
     blowUp: KEYFRAME_CONFIG.intro?.blowUpStart ?? 1,
   })
-  const introElapsed = useRef(0)
   const smoothedPose = useRef<HeroScenePose>({
     ...poseFromKeyframe(CATALYZE_KEYFRAME),
     blowUp: KEYFRAME_CONFIG.intro?.blowUpStart ?? 1,
@@ -147,15 +180,19 @@ function DeviceModel({
     const { position, rotation, scale, blowUp } = smoothedPose.current
     const deg = Math.PI / 180
 
-    poseRef.current.position.set(position.x, position.y, position.z)
-    poseRef.current.rotation.set(
-      rotation.x * deg,
-      rotation.y * deg,
-      rotation.z * deg,
+    poseRef.current.position.set(
+      position.x + MODEL_OFFSET.position.x,
+      position.y + MODEL_OFFSET.position.y,
+      position.z + MODEL_OFFSET.position.z,
     )
-    poseRef.current.scale.setScalar(scale)
+    poseRef.current.rotation.set(
+      (rotation.x + MODEL_OFFSET.rotation.x) * deg,
+      (rotation.y + MODEL_OFFSET.rotation.y) * deg,
+      (rotation.z + MODEL_OFFSET.rotation.z) * deg,
+    )
+    poseRef.current.scale.setScalar(scale * MODEL_SCALE)
 
-    const centerIndex = (model.parts.length - 1) / 2
+    const centerIndex = (model.parts.length - 1) / 2 + 0.5
     const spread = KEYFRAME_CONFIG.blowUpSpread
 
     for (let i = 0; i < model.parts.length; i += 1) {
@@ -188,15 +225,24 @@ function DeviceModel({
 function SceneContent({
   scrollProgress,
   edgeColor,
+  viewportRef,
 }: {
   scrollProgress: number
   edgeColor: string
+  viewportRef: RefObject<HTMLDivElement | null>
 }) {
+  const introElapsed = useRef(0)
+
   return (
     <>
       <IsometricCamera />
       <ambientLight intensity={1} />
-      <DeviceModel scrollProgress={scrollProgress} edgeColor={edgeColor} />
+      <IntroBlurController viewportRef={viewportRef} introElapsed={introElapsed} />
+      <DeviceModel
+        scrollProgress={scrollProgress}
+        edgeColor={edgeColor}
+        introElapsed={introElapsed}
+      />
     </>
   )
 }
@@ -206,20 +252,25 @@ interface HeroSceneProps {
 }
 
 export default function HeroScene({ scrollProgress }: HeroSceneProps) {
+  const viewportRef = useRef<HTMLDivElement>(null)
   const colorScheme = useComputedColorScheme('light', {
     getInitialValueInEffect: true,
   })
   const edgeColor = colorScheme === 'dark' ? '#f0f0f0' : '#141414'
 
   return (
-    <div className={classes.viewport}>
+    <div ref={viewportRef} className={classes.viewport}>
       <Canvas
         className={classes.canvas}
         dpr={[1, 1.5]}
         gl={{ alpha: true, antialias: true }}
       >
         <Suspense fallback={null}>
-          <SceneContent scrollProgress={scrollProgress} edgeColor={edgeColor} />
+          <SceneContent
+            scrollProgress={scrollProgress}
+            edgeColor={edgeColor}
+            viewportRef={viewportRef}
+          />
         </Suspense>
       </Canvas>
     </div>
