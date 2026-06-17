@@ -1,0 +1,6 @@
+*.FCStd
+*.FCBak
+gltfpack
+*.bin
+*.gltf
+*.step
