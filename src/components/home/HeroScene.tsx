@@ -11,11 +11,13 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  NoToneMapping,
   Object3D,
+  SRGBColorSpace,
 } from 'three'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-import sceneUrl from '../../assets/3d/scene.glb?url'
+import sceneUrl from '../../assets/3d/scene_backup.glb?url'
 import keyframeData from '../../data/heroSceneKeyframes.json'
 import {
   dampPose,
@@ -26,6 +28,7 @@ import {
 } from '../../lib/heroKeyframeInterpolation'
 import type { HeroSceneKeyframeConfig, HeroScenePose } from '../../types/heroSceneKeyframes'
 import {
+  extractBlowUpParts,
   extractDeviceRoot,
   ISOMETRIC_CAMERA_POSITION,
   normalizeModel,
@@ -50,10 +53,10 @@ function applyOutlineStyle(root: Object3D, edgeColor: string) {
     if (!mesh.isMesh || !mesh.geometry) return
 
     mesh.material = new MeshBasicMaterial({
-      color: edgeColor,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
+      color: 'white',
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
     })
 
     mesh.getObjectByName('__outline_edges__')?.removeFromParent()
@@ -140,11 +143,16 @@ function DeviceModel({
     const device = extractDeviceRoot(gltf.scene)
     if (!device) return null
 
-    normalizeModel(device)
-    const parts = [...device.children]
-    for (const part of parts) device.remove(part)
+    const { object: wrapper } = normalizeModel(device)
+    const deviceRoot = wrapper.children[0]
+    const parts = extractBlowUpParts(deviceRoot)
+    wrapper.remove(deviceRoot)
 
-    return { parts }
+    return {
+      fitPosition: wrapper.position.clone(),
+      fitScale: wrapper.scale.x,
+      parts,
+    }
   }, [gltf.scene])
 
   useLayoutEffect(() => {
@@ -201,16 +209,18 @@ function DeviceModel({
 
   return (
     <group ref={poseRef}>
-      {model.parts.map((part, index) => (
-        <group
-          key={part.uuid}
-          ref={(element) => {
-            if (element) partWrapperRefs.current[index] = element
-          }}
-        >
-          <primitive object={part} />
-        </group>
-      ))}
+      <group position={model.fitPosition} scale={model.fitScale}>
+        {model.parts.map((part, index) => (
+          <group
+            key={part.uuid}
+            ref={(element) => {
+              if (element) partWrapperRefs.current[index] = element
+            }}
+          >
+            <primitive object={part} />
+          </group>
+        ))}
+      </group>
     </group>
   )
 }
@@ -256,7 +266,10 @@ export default function HeroScene({ scrollProgress }: HeroSceneProps) {
       <Canvas
         className={classes.canvas}
         dpr={[1, 1.5]}
-        gl={{ alpha: true, antialias: true }}
+        gl={{ alpha: true, antialias: true,
+      outputColorSpace: SRGBColorSpace,
+      toneMapping: NoToneMapping,
+        }}
       >
         <Suspense fallback={null}>
           <SceneContent
