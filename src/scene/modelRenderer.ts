@@ -48,6 +48,7 @@ export function installOutlineRenderer(root: Object3D, colors: ModelColors): Out
     const edgeMat = new LineBasicMaterial({ color: colors.edge, depthTest: true })
     const edges = new LineSegments(
       new EdgesGeometry(mesh.geometry, EDGE_THRESHOLD),
+      // mesh.geometry,
       edgeMat,
     )
     edges.name = '__outline_edges__'

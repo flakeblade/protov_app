@@ -225,3 +225,4 @@ export default function HeroScene({ scrollProgress }: HeroSceneProps) {
     </div>
   )
 }
+1

@@ -4,7 +4,7 @@
   "modelScale": 2,
   "modelOffset": {
     "position": { "x": 0, "y": 0.1, "z": 0 },
-    "rotation": { "x": 0, "y": -90, "z": 0 }
+    "rotation": { "x": 0, "y": -80, "z": -10 }
   },
   "intro": {
     "duration": 2.5,
@@ -23,24 +23,24 @@
     {
       "id": "connect-breadboard",
       "scroll": 0.333,
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "rotation": { "x": 0, "y": 0, "z": 0 },
-      "scale": 1,
+      "position": { "x": 0, "y": -0.75, "z": 0 },
+      "rotation": { "x": 0, "y": 80, "z": 170 },
+      "scale": 1.5,
       "blowUp": 0
     },
     {
       "id": "adjust-power",
       "scroll": 0.666,
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "rotation": { "x": 0, "y": 0, "z": 0 },
-      "scale": 1,
+      "position": { "x": 0, "y": -0.75, "z": 0 },
+      "rotation": { "x": 0, "y": 80, "z": 190 },
+      "scale": 1.35,
       "blowUp": 0
     },
     {
       "id": "end",
       "scroll": 1,
       "position": { "x": 0, "y": 0, "z": 0 },
-      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": -20, "z": -45 },
       "scale": 1,
       "blowUp": 0
     }
