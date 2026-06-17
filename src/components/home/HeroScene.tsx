@@ -4,17 +4,7 @@ import { OrthographicCamera } from '@react-three/drei'
 import { useComputedColorScheme } from '@mantine/core'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
-import {
-  EdgesGeometry,
-  Group,
-  LineBasicMaterial,
-  LineSegments,
-  Mesh,
-  MeshBasicMaterial,
-  NoToneMapping,
-  Object3D,
-  SRGBColorSpace,
-} from 'three'
+import { Group, NoToneMapping, SRGBColorSpace } from 'three'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import sceneUrl from '../../assets/3d/scene_backup.glb?url'
@@ -26,17 +16,17 @@ import {
   interpolatePoseAtScroll,
   poseFromKeyframe,
 } from '../../lib/heroKeyframeInterpolation'
-import type { HeroSceneKeyframeConfig, HeroScenePose } from '../../types/heroSceneKeyframes'
+import { applyBlowUpSpread, prepareModelFromGltf } from '../../scene/modelLoader'
 import {
-  extractBlowUpParts,
-  extractDeviceRoot,
-  ISOMETRIC_CAMERA_POSITION,
-  normalizeModel,
-  zoomForViewport,
-} from './heroSceneUtils'
+  installOutlineRenderer,
+  updateModelColors,
+  type ModelColors,
+  type OutlineRenderer,
+} from '../../scene/modelRenderer'
+import { ISOMETRIC_CAMERA_POSITION, zoomForViewport } from '../../scene/sceneCamera'
+import type { HeroSceneKeyframeConfig, HeroScenePose } from '../../types/heroSceneKeyframes'
 import classes from './HeroScene.module.css'
 
-const EDGE_THRESHOLD = 10
 const KEYFRAME_CONFIG = keyframeData as HeroSceneKeyframeConfig
 const MODEL_SCALE = KEYFRAME_CONFIG.modelScale ?? 1
 const MODEL_OFFSET = KEYFRAME_CONFIG.modelOffset ?? {
@@ -46,30 +36,6 @@ const MODEL_OFFSET = KEYFRAME_CONFIG.modelOffset ?? {
 const CATALYZE_KEYFRAME =
   KEYFRAME_CONFIG.keyframes.find((keyframe) => keyframe.id === 'catalyze') ??
   KEYFRAME_CONFIG.keyframes[0]
-
-function applyOutlineStyle(root: Object3D, edgeColor: string) {
-  root.traverse((obj) => {
-    const mesh = obj as Mesh
-    if (!mesh.isMesh || !mesh.geometry) return
-
-    mesh.material = new MeshBasicMaterial({
-      color: 'white',
-      transparent: false,
-      opacity: 1.0,
-      depthWrite: true,
-    })
-
-    mesh.getObjectByName('__outline_edges__')?.removeFromParent()
-
-    const edges = new LineSegments(
-      new EdgesGeometry(mesh.geometry, EDGE_THRESHOLD),
-      new LineBasicMaterial({ color: edgeColor, depthTest: true }),
-    )
-    edges.name = '__outline_edges__'
-    edges.renderOrder = 2
-    mesh.add(edges)
-  })
-}
 
 function IsometricCamera() {
   const { size } = useThree()
@@ -106,7 +72,6 @@ function IntroBlurController({
 
     const progress = introProgressAtElapsed(introElapsed.current, intro.duration)
     const blurPx = intro.blurStart * (1 - progress)
-
     viewport.style.filter = blurPx > 0.05 ? `blur(${blurPx}px)` : ''
   })
 
@@ -115,11 +80,11 @@ function IntroBlurController({
 
 function DeviceModel({
   scrollProgress,
-  edgeColor,
+  modelColors,
   introElapsed,
 }: {
   scrollProgress: number
-  edgeColor: string
+  modelColors: ModelColors
   introElapsed: RefObject<number>
 }) {
   use(MeshoptDecoder.ready)
@@ -129,7 +94,7 @@ function DeviceModel({
   }) as GLTF
 
   const poseRef = useRef<Group>(null)
-  const partWrapperRefs = useRef<Group[]>([])
+  const outlineRef = useRef<OutlineRenderer | null>(null)
   const introStartPose = useRef<HeroScenePose>({
     ...poseFromKeyframe(CATALYZE_KEYFRAME),
     blowUp: KEYFRAME_CONFIG.intro?.blowUpStart ?? 1,
@@ -139,26 +104,17 @@ function DeviceModel({
     blowUp: KEYFRAME_CONFIG.intro?.blowUpStart ?? 1,
   })
 
-  const model = useMemo(() => {
-    const device = extractDeviceRoot(gltf.scene)
-    if (!device) return null
-
-    const { object: wrapper } = normalizeModel(device)
-    const deviceRoot = wrapper.children[0]
-    const parts = extractBlowUpParts(deviceRoot)
-    wrapper.remove(deviceRoot)
-
-    return {
-      fitPosition: wrapper.position.clone(),
-      fitScale: wrapper.scale.x,
-      parts,
-    }
-  }, [gltf.scene])
+  const model = useMemo(() => prepareModelFromGltf(gltf.scene), [gltf.scene])
 
   useLayoutEffect(() => {
     if (!model) return
-    for (const part of model.parts) applyOutlineStyle(part, edgeColor)
-  }, [model, edgeColor])
+    outlineRef.current = installOutlineRenderer(model.root, modelColors)
+  }, [model])
+
+  useLayoutEffect(() => {
+    if (!outlineRef.current) return
+    updateModelColors(outlineRef.current, modelColors)
+  }, [modelColors])
 
   useFrame((_, delta) => {
     if (!poseRef.current || !model) return
@@ -195,43 +151,25 @@ function DeviceModel({
     )
     poseRef.current.scale.setScalar(scale * MODEL_SCALE)
 
-    const centerIndex = (model.parts.length - 1) / 2 + 0.5
-    const spread = KEYFRAME_CONFIG.blowUpSpread
-
-    for (let i = 0; i < model.parts.length; i += 1) {
-      const wrapper = partWrapperRefs.current[i]
-      if (!wrapper) continue
-      wrapper.position.y = (i - centerIndex) * spread * blowUp
-    }
+    applyBlowUpSpread(model.parts, blowUp, KEYFRAME_CONFIG.blowUpSpread)
   })
 
   if (!model) return null
 
   return (
     <group ref={poseRef}>
-      <group position={model.fitPosition} scale={model.fitScale}>
-        {model.parts.map((part, index) => (
-          <group
-            key={part.uuid}
-            ref={(element) => {
-              if (element) partWrapperRefs.current[index] = element
-            }}
-          >
-            <primitive object={part} />
-          </group>
-        ))}
-      </group>
+      <primitive object={model.root} />
     </group>
   )
 }
 
 function SceneContent({
   scrollProgress,
-  edgeColor,
+  modelColors,
   viewportRef,
 }: {
   scrollProgress: number
-  edgeColor: string
+  modelColors: ModelColors
   viewportRef: RefObject<HTMLDivElement | null>
 }) {
   const introElapsed = useRef(0)
@@ -243,7 +181,7 @@ function SceneContent({
       <IntroBlurController viewportRef={viewportRef} introElapsed={introElapsed} />
       <DeviceModel
         scrollProgress={scrollProgress}
-        edgeColor={edgeColor}
+        modelColors={modelColors}
         introElapsed={introElapsed}
       />
     </>
@@ -259,22 +197,27 @@ export default function HeroScene({ scrollProgress }: HeroSceneProps) {
   const colorScheme = useComputedColorScheme('light', {
     getInitialValueInEffect: true,
   })
-  const edgeColor = colorScheme === 'dark' ? '#f0f0f0' : '#141414'
+  const modelColors: ModelColors = {
+    edge: colorScheme === 'dark' ? '#f0f0f0' : '#141414',
+    fill: colorScheme === 'dark' ? '#141414' : '#ffffff',
+  }
 
   return (
     <div ref={viewportRef} className={classes.viewport}>
       <Canvas
         className={classes.canvas}
         dpr={[1, 1.5]}
-        gl={{ alpha: true, antialias: true,
-      outputColorSpace: SRGBColorSpace,
-      toneMapping: NoToneMapping,
+        gl={{
+          alpha: true,
+          antialias: true,
+          outputColorSpace: SRGBColorSpace,
+          toneMapping: NoToneMapping,
         }}
       >
         <Suspense fallback={null}>
           <SceneContent
             scrollProgress={scrollProgress}
-            edgeColor={edgeColor}
+            modelColors={modelColors}
             viewportRef={viewportRef}
           />
         </Suspense>
