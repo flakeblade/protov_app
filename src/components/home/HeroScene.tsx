@@ -24,6 +24,7 @@ import {
   type OutlineRenderer,
 } from '../../scene/modelRenderer'
 import { ISOMETRIC_CAMERA_POSITION, zoomForViewport } from '../../scene/sceneCamera'
+import { heroViewportLayout } from '../../scene/sceneLayout'
 import type { HeroSceneKeyframeConfig, HeroScenePose } from '../../types/heroSceneKeyframes'
 import classes from './HeroScene.module.css'
 
@@ -39,7 +40,8 @@ const CATALYZE_KEYFRAME =
 
 function IsometricCamera() {
   const { size } = useThree()
-  const zoom = zoomForViewport(size.width, size.height)
+  const layout = heroViewportLayout(size.width, size.height)
+  const zoom = zoomForViewport(layout.zoomViewportWidth, layout.zoomViewportHeight)
 
   return (
     <OrthographicCamera
@@ -95,6 +97,7 @@ function DeviceModel({
 
   const poseRef = useRef<Group>(null)
   const outlineRef = useRef<OutlineRenderer | null>(null)
+  const { size } = useThree()
   const introStartPose = useRef<HeroScenePose>({
     ...poseFromKeyframe(CATALYZE_KEYFRAME),
     blowUp: KEYFRAME_CONFIG.intro?.blowUpStart ?? 1,
@@ -136,11 +139,12 @@ function DeviceModel({
       smoothedPose.current = dampPose(smoothedPose.current, target, lambda, delta)
     }
 
+    const layout = heroViewportLayout(size.width, size.height)
     const { position, rotation, scale, blowUp } = smoothedPose.current
     const deg = Math.PI / 180
 
     poseRef.current.position.set(
-      position.x + MODEL_OFFSET.position.x,
+      position.x + MODEL_OFFSET.position.x + layout.offsetX,
       position.y + MODEL_OFFSET.position.y,
       position.z + MODEL_OFFSET.position.z,
     )

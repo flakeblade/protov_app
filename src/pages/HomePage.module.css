@@ -2,11 +2,22 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: light-dark(var(--mantine-color-white), var(--mantine-color-black));
+  position: relative;
+  background: transparent;
+}
+
+.backgroundCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: light-dark(var(--mantine-color-white), #000000);
 }
 
 .scrollStage {
   flex: 1;
+  position: relative;
+  z-index: 1;
 }
 
 .scrollContainer {
@@ -34,41 +45,11 @@
 
 .canvasSpacer {
   min-height: 1px;
-}
-
-.fixedCanvasWrap {
-  position: fixed;
-  top: 60px;
-  left: 0;
-  right: 0;
-  height: calc(100vh - 60px);
   pointer-events: none;
-  z-index: 2;
-}
-
-.fixedCanvasContainer {
-  height: 100%;
-}
-
-.fixedCanvasGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--mantine-spacing-xl);
-  height: 100%;
-  align-items: center;
-}
-
-.fixedCanvas {
-  grid-column: 2;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  pointer-events: auto;
 }
 
 @media (max-width: 48em) {
-  .scrollLayout,
-  .fixedCanvasGrid {
+  .scrollLayout {
     grid-template-columns: 1fr;
     gap: 0;
   }
@@ -84,18 +65,5 @@
 
   .canvasSpacer {
     display: none;
-  }
-
-  .fixedCanvasWrap {
-    position: relative;
-    top: auto;
-    height: 42vh;
-    min-height: 280px;
-    pointer-events: auto;
-  }
-
-  .fixedCanvas {
-    grid-column: 1;
-    height: 100%;
   }
 }

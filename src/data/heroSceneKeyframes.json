@@ -1,9 +1,9 @@
 {
   "smoothing": 10,
   "blowUpSpread": 0.4,
-  "modelScale": 2,
+  "modelScale": 2.4,
   "modelOffset": {
-    "position": { "x": 0, "y": 0.1, "z": 0 },
+    "position": { "x": 0, "y": 0.05, "z": -0.6 },
     "rotation": { "x": 0, "y": -80, "z": -10 }
   },
   "intro": {
@@ -39,7 +39,7 @@
     {
       "id": "end",
       "scroll": 1,
-      "position": { "x": 0, "y": 0, "z": 0 },
+      "position": { "x": 0, "y": -0.1, "z": -0.4 },
       "rotation": { "x": 0, "y": -20, "z": -45 },
       "scale": 1,
       "blowUp": 0

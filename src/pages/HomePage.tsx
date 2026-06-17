@@ -18,19 +18,13 @@ export default function HomePage() {
 
   return (
     <div className={classes.page}>
-      <HomeNavbar />
-
-      <div className={classes.fixedCanvasWrap}>
-        <Container size="xl" px="md" className={classes.fixedCanvasContainer}>
-          <div className={classes.fixedCanvasGrid}>
-            <div className={classes.fixedCanvas}>
-              <Suspense fallback={<HeroSceneFallback />}>
-                <HeroScene scrollProgress={scrollProgress} />
-              </Suspense>
-            </div>
-          </div>
-        </Container>
+      <div className={classes.backgroundCanvas} aria-hidden>
+        <Suspense fallback={<HeroSceneFallback />}>
+          <HeroScene scrollProgress={scrollProgress} />
+        </Suspense>
       </div>
+
+      <HomeNavbar />
 
       <section ref={scrollStageRef} className={classes.scrollStage}>
         <Container size="xl" px="md" className={classes.scrollContainer}>
