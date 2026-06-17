@@ -1,13 +1,24 @@
 # ProtoV App
 
-Vite + React + TypeScript frontend with Mantine UI and Three.js (React Three Fiber) for fast 3D rendering. Built as a static site for deployment via GitHub Pages.
+Vite + React + TypeScript web frontend with Mantine UI. The lab device control UI (ported from the Tauri app) lives under `/lab/`. Built as a static site for GitHub Pages.
 
 ## Stack
 
 - **Vite** — dev server and production bundler
 - **React 19** + **TypeScript**
 - **Mantine** — component library and theming
-- **Three.js** via **@react-three/fiber** and **@react-three/drei** — WebGL 3D scene
+- **React Router** — client-side routing
+- **Three.js** (via React Three Fiber) — available for future 3D views
+
+## Routes
+
+| Path | Description |
+|------|-------------|
+| `/` | Welcome page (placeholder) with links to Lab and Docs |
+| `/lab/` | Device control UI — ported from the Tauri app |
+| `/lab/devices` | Connected device cards |
+| `/lab/controls` | Per-channel voltage/current controls |
+| `/docs/` | Documentation placeholder |
 
 ## Development
 
@@ -16,7 +27,8 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+- Home: [http://localhost:5173/](http://localhost:5173/)
+- Lab: [http://localhost:5173/lab/](http://localhost:5173/lab/)
 
 ## Build
 
@@ -24,25 +36,13 @@ Open [http://localhost:5173](http://localhost:5173).
 npm run build
 ```
 
-Output is written to `dist/` as static assets.
-
-Preview the production build locally:
-
-```bash
-npm run preview
-```
+Output is written to `dist/` as static assets. A `404.html` copy is generated for GitHub Pages SPA routing.
 
 ## Deploy to GitHub Pages
-
-The Vite `base` path is set to `/protov_app/` for production builds to match the repository name.
 
 ```bash
 npm run deploy
 ```
-
-This runs `npm run build` then publishes `dist/` to the `gh-pages` branch.
-
-Ensure GitHub Pages is configured to deploy from the `gh-pages` branch (Settings → Pages → Deploy from branch).
 
 Live URL: [https://flakeblade.github.io/protov_app/](https://flakeblade.github.io/protov_app/)
 
@@ -50,10 +50,14 @@ Live URL: [https://flakeblade.github.io/protov_app/](https://flakeblade.github.i
 
 ```
 src/
+  pages/
+    HomePage.tsx       # Welcome placeholder
+    DocsPage.tsx       # Docs placeholder
+  lab/                 # Ported Tauri device control UI
+    LabApp.tsx         # AppShell + collapsible sidebar
+    navbar.tsx
+    components/
+    pages/
   components/
-    Scene3D.tsx   # Three.js canvas (lazy-loaded)
-  App.tsx         # Mantine AppShell layout
-  main.tsx        # MantineProvider + app entry
+    Scene3D.tsx        # Three.js demo (unused, kept for later)
 ```
-
-Extend `Scene3D.tsx` with models, shaders, and post-processing as your 3D needs grow.
