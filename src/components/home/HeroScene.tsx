@@ -140,16 +140,11 @@ function DeviceModel({
     const device = extractDeviceRoot(gltf.scene)
     if (!device) return null
 
-    const { object: wrapper } = normalizeModel(device)
-    const deviceRoot = wrapper.children[0]
-    const parts = [...deviceRoot.children]
-    wrapper.remove(deviceRoot)
+    normalizeModel(device)
+    const parts = [...device.children]
+    for (const part of parts) device.remove(part)
 
-    return {
-      fitPosition: wrapper.position.clone(),
-      fitScale: wrapper.scale.x,
-      parts,
-    }
+    return { parts }
   }, [gltf.scene])
 
   useLayoutEffect(() => {
@@ -206,18 +201,16 @@ function DeviceModel({
 
   return (
     <group ref={poseRef}>
-      <group position={model.fitPosition} scale={model.fitScale}>
-        {model.parts.map((part, index) => (
-          <group
-            key={part.uuid}
-            ref={(element) => {
-              if (element) partWrapperRefs.current[index] = element
-            }}
-          >
-            <primitive object={part} />
-          </group>
-        ))}
-      </group>
+      {model.parts.map((part, index) => (
+        <group
+          key={part.uuid}
+          ref={(element) => {
+            if (element) partWrapperRefs.current[index] = element
+          }}
+        >
+          <primitive object={part} />
+        </group>
+      ))}
     </group>
   )
 }

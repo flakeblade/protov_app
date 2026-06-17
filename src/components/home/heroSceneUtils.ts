@@ -42,20 +42,37 @@ export interface NormalizedModel {
   maxDimension: number
 }
 
-/** Center at origin and scale so max dimension = 1 (unit-agnostic). */
-export function normalizeModel(object: Object3D): NormalizedModel {
-  const wrapper = new Group()
-  wrapper.add(object)
+/** Shift child transforms so the mesh centroid sits at the root origin. */
+export function centerModelAtOrigin(root: Object3D) {
+  root.updateMatrixWorld(true)
+  const center = new Box3().setFromObject(root).getCenter(new Vector3())
+  const localCenter = root.worldToLocal(center)
 
-  const box = new Box3().setFromObject(wrapper)
-  const center = box.getCenter(new Vector3())
-  const size = box.getSize(new Vector3())
+  for (const child of root.children) {
+    child.position.sub(localCenter)
+  }
+}
+
+/** Uniformly scale child transforms so the mesh max dimension = 1. */
+export function scaleModelToUnit(root: Object3D) {
+  root.updateMatrixWorld(true)
+  const size = new Box3().setFromObject(root).getSize(new Vector3())
   const maxDimension = Math.max(size.x, size.y, size.z, 1e-6)
+  const scale = 1 / maxDimension
 
-  wrapper.position.copy(center.multiplyScalar(-1))
-  wrapper.scale.setScalar(1 / maxDimension)
+  for (const child of root.children) {
+    child.position.multiplyScalar(scale)
+    child.scale.multiplyScalar(scale)
+  }
 
-  return { object: wrapper, maxDimension: 1 }
+  return maxDimension
+}
+
+/** Center mesh at origin and scale so max dimension = 1 (unit-agnostic). */
+export function normalizeModel(object: Object3D): NormalizedModel {
+  centerModelAtOrigin(object)
+  scaleModelToUnit(object)
+  return { object, maxDimension: 1 }
 }
 
 /** Orthographic zoom so a unit-sized model fills `fillRatio` of the viewport min edge. */

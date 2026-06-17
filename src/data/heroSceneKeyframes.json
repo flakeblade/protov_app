@@ -1,15 +1,15 @@
 {
   "smoothing": 10,
   "blowUpSpread": 0.4,
-  "modelScale": 1.5,
+  "modelScale": 2,
   "modelOffset": {
-    "position": { "x": -0.4, "y": 2.5, "z": 0.4 },
-    "rotation": { "x": 0, "y": 0, "z": 0 }
+    "position": { "x": 0, "y": 0.1, "z": 0 },
+    "rotation": { "x": 0, "y": -90, "z": 0 }
   },
   "intro": {
     "duration": 2.5,
-    "blowUpStart": 10,
-    "blurStart": 10
+    "blowUpStart": 50,
+    "blurStart": 20
   },
   "keyframes": [
     {
@@ -26,7 +26,7 @@
       "position": { "x": 0, "y": 0, "z": 0 },
       "rotation": { "x": 0, "y": 0, "z": 0 },
       "scale": 1,
-      "blowUp": 0.001
+      "blowUp": 0
     },
     {
       "id": "adjust-power",
