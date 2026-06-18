@@ -53,12 +53,20 @@ export function HomeFooter() {
                 ProtoV MINI on Crowd Supply
               </Anchor>
               <Anchor
-                href="https://github.com/thataquarel/protovolt"
+                href="https://github.com/flakeblade/protov_app"
                 target="_blank"
                 rel="noreferrer"
                 className={classes.link}
               >
-                Open source (EPL-2.0)
+                ProtoV app source (this website)
+              </Anchor>
+              <Anchor
+                href="https://github.com/flakeblade/protov"
+                target="_blank"
+                rel="noreferrer"
+                className={classes.link}
+              >
+                ProtoV device source (firmware)
               </Anchor>
             </nav>
           </div>
