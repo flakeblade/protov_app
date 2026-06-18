@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Stack } from '@mantine/core'
 import classes from './HeroRotatingText.module.css'
 
-const WORDS = ['power', 'prototyping', 'experimentation'] as const
+const WORDS = ['prototyping', 'experimentation', 'creativity'] as const
 const INTERVAL_MS = 2800
 
 export function HeroRotatingText() {
