@@ -1,4 +1,5 @@
-import { Suspense, use, useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
+// import { Suspense, use, useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
+import { use, useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
 import { useComputedColorScheme } from '@mantine/core'
@@ -7,7 +8,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { Group, NoToneMapping, SRGBColorSpace } from 'three'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-import sceneUrl from '../../assets/3d/scene_backup.glb?url'
+import { HERO_SCENE_GLB_URL } from '../../scene/heroAssetUrls'
 import keyframeData from '../../data/heroSceneKeyframes.json'
 import {
   dampPose,
@@ -91,7 +92,7 @@ function DeviceModel({
 }) {
   use(MeshoptDecoder.ready)
 
-  const gltf = useLoader(GLTFLoader, sceneUrl, (loader) => {
+  const gltf = useLoader(GLTFLoader, HERO_SCENE_GLB_URL, (loader) => {
     loader.setMeshoptDecoder(MeshoptDecoder)
   }) as GLTF
 
@@ -218,15 +219,14 @@ export default function HeroScene({ scrollProgress }: HeroSceneProps) {
           toneMapping: NoToneMapping,
         }}
       >
-        <Suspense fallback={null}>
+        {/* <Suspense fallback={null}> */}
           <SceneContent
             scrollProgress={scrollProgress}
             modelColors={modelColors}
             viewportRef={viewportRef}
           />
-        </Suspense>
+        {/* </Suspense> */}
       </Canvas>
     </div>
   )
 }
-1

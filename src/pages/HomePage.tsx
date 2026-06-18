@@ -1,14 +1,18 @@
-import { lazy, Suspense, useRef } from 'react'
+// import { lazy, Suspense, useRef } from 'react'
+// import { Suspense, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Container } from '@mantine/core'
 import { HomeNavbar } from '../components/home/HomeNavbar'
 import { HeroRotatingText } from '../components/home/HeroRotatingText'
 import { HeroScrollPanel } from '../components/home/HeroScrollPanel'
 import { HomeFooter } from '../components/home/HomeFooter'
-import { HeroSceneFallback } from '../components/home/HeroSceneFallback'
+import { preloadHeroGlb } from '../scene/preloadHero'
+// import { HeroSceneFallback } from '../components/home/HeroSceneFallback'
 import { useScrollStageProgress } from '../hooks/useHeroScrollProgress'
 import classes from './HomePage.module.css'
+import  HeroScene from '../components/home/HeroScene'
 
-const HeroScene = lazy(() => import('../components/home/HeroScene'))
+// const HeroScene = lazy(() => import('../components/home/HeroScene'))
 
 const PANEL_HEIGHT = 'calc(100vh - 60px)'
 
@@ -16,12 +20,16 @@ export default function HomePage() {
   const scrollStageRef = useRef<HTMLElement>(null)
   const scrollProgress = useScrollStageProgress(scrollStageRef)
 
+  useEffect(() => {
+    preloadHeroGlb()
+  }, [])
+
   return (
     <div className={classes.page}>
       <div className={classes.backgroundCanvas} aria-hidden>
-        <Suspense fallback={<HeroSceneFallback />}>
+        {/* <Suspense fallback={<HeroSceneFallback />}> */}
           <HeroScene scrollProgress={scrollProgress} />
-        </Suspense>
+        {/* </Suspense> */}
       </div>
 
       <HomeNavbar />

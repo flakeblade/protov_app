@@ -5,6 +5,7 @@
   "type": "module",
   "homepage": "https://flakeblade.github.io/protov_app/",
   "scripts": {
+    "prebuild": "mkdir -p public/models && cp src/assets/3d/scene_backup.glb public/models/scene.glb",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
