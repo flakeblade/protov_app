@@ -1,6 +1,7 @@
 .footer {
   position: relative;
   z-index: 1;
+  background: light-dark(var(--mantine-color-white), #000000);
   border-top: 1px solid light-dark(
     var(--mantine-color-gray-3),
     var(--mantine-color-dark-4)

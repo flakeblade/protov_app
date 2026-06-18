@@ -26,45 +26,45 @@ export default function HomePage() {
 
   return (
     <div className={classes.page}>
-      <div className={classes.backgroundCanvas} aria-hidden>
-        {/* <Suspense fallback={<HeroSceneFallback />}> */}
-          <HeroScene scrollProgress={scrollProgress} />
-        {/* </Suspense> */}
-      </div>
-
       <HomeNavbar />
 
-      <section ref={scrollStageRef} className={classes.scrollStage}>
-        <Container size="xl" px="md" className={classes.scrollContainer}>
-          <div className={classes.scrollLayout}>
-            <div className={classes.textPanels}>
-              <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
-                <HeroRotatingText />
+      <div className={classes.scrollExperience}>
+        <div className={classes.canvasSticky} aria-hidden>
+          <HeroScene scrollProgress={scrollProgress} />
+        </div>
+
+        <section ref={scrollStageRef} className={classes.scrollStage}>
+          <Container size="xl" px="md" className={classes.scrollContainer}>
+            <div className={classes.scrollLayout}>
+              <div className={classes.textPanels}>
+                <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
+                  <HeroRotatingText />
+                </div>
+
+                <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
+                  <HeroScrollPanel
+                    title="Connect to a breadboard"
+                    subtitle="ProtoV MINI plugs directly into standard breadboard power rails with dual 2×5 pin headers — USB-C powered, credit-card sized, and built for clean bench setups in the lab or field."
+                    buttonLabel="About hardware"
+                    buttonTo="/docs"
+                  />
+                </div>
+
+                <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
+                  <HeroScrollPanel
+                    title="Adjust power"
+                    subtitle="Set voltage and current per channel with real-time measurement — up to 20 V and 5 A per rail. Control everything from the online lab interface."
+                    buttonLabel="Open lab"
+                    buttonTo="/lab"
+                  />
+                </div>
               </div>
 
-              <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
-                <HeroScrollPanel
-                  title="Connect to a breadboard"
-                  subtitle="ProtoV MINI plugs directly into standard breadboard power rails with dual 2×5 pin headers — USB-C powered, credit-card sized, and built for clean bench setups in the lab or field."
-                  buttonLabel="About hardware"
-                  buttonTo="/docs"
-                />
-              </div>
-
-              <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
-                <HeroScrollPanel
-                  title="Adjust power"
-                  subtitle="Set voltage and current per channel with real-time measurement — up to 20 V and 5 A per rail. Control everything from the online lab interface."
-                  buttonLabel="Open lab"
-                  buttonTo="/lab"
-                />
-              </div>
+              <div className={classes.canvasSpacer} aria-hidden />
             </div>
-
-            <div className={classes.canvasSpacer} aria-hidden />
-          </div>
-        </Container>
-      </section>
+          </Container>
+        </section>
+      </div>
 
       <HomeFooter />
     </div>
