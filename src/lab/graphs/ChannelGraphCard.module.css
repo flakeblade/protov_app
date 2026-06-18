@@ -1,0 +1,62 @@
+.cardHeader {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.setpoints {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--mantine-color-dimmed);
+  white-space: nowrap;
+}
+
+.metricControl {
+  margin-bottom: var(--mantine-spacing-xs);
+}
+
+.axisRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-xs);
+}
+
+@media (min-width: 36em) {
+  .axisRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.axisLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mantine-color-dimmed);
+  margin-bottom: 0.15rem;
+}
+
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-sm);
+  min-height: 1.4rem;
+  margin-top: var(--mantine-spacing-xs);
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--mantine-color-dimmed);
+}
+
+.footerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--mantine-spacing-sm);
+  gap: var(--mantine-spacing-sm);
+}
+
+.timeHint {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+}

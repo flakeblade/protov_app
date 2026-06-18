@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useDisclosure } from '@mantine/hooks'
 import { AppShell, Burger } from '@mantine/core'
@@ -8,9 +8,31 @@ import { HomeSpotlight } from '../components/home/HomeSpotlight'
 import { NavbarSimple } from './navbar'
 import { DevicesPage } from './pages/devices'
 import { ControlsPage } from './pages/controls'
-import { MeasurementsPage } from './pages/measurements'
 import { GraphsPage } from './pages/graphs'
 import { TelemetryPage } from './pages/telemetry'
+import { isPathAllowedInView, LabViewProvider, useLabView } from './lab_view'
+
+function LabRoutes() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { view } = useLabView()
+
+  useEffect(() => {
+    if (!isPathAllowedInView(location.pathname, view)) {
+      navigate('/lab/devices', { replace: true })
+    }
+  }, [location.pathname, navigate, view])
+
+  return (
+    <Routes>
+      <Route index element={<Navigate to="devices" replace />} />
+      <Route path="devices" element={<DevicesPage />} />
+      <Route path="controls" element={<ControlsPage />} />
+      <Route path="graphs" element={<GraphsPage />} />
+      <Route path="telemetry" element={<TelemetryPage />} />
+    </Routes>
+  )
+}
 
 export default function LabApp() {
   const isMobile = useIsMobile()
@@ -42,7 +64,7 @@ export default function LabApp() {
   }, [location.pathname, isMobile, closeMobile])
 
   return (
-    <>
+    <LabViewProvider>
       <HomeSpotlight />
       <AppShell
         padding="md"
@@ -62,16 +84,9 @@ export default function LabApp() {
         </AppShell.Navbar>
 
         <AppShell.Main>
-          <Routes>
-            <Route index element={<Navigate to="devices" replace />} />
-            <Route path="devices" element={<DevicesPage />} />
-            <Route path="controls" element={<ControlsPage />} />
-            <Route path="measurements" element={<MeasurementsPage />} />
-            <Route path="graphs" element={<GraphsPage />} />
-            <Route path="telemetry" element={<TelemetryPage />} />
-          </Routes>
+          <LabRoutes />
         </AppShell.Main>
       </AppShell>
-    </>
+    </LabViewProvider>
   )
 }

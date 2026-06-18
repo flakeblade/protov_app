@@ -60,6 +60,13 @@
   min-height: 4rem;
 }
 
+.limitStackSingle {
+  display: block;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  min-height: 4rem;
+}
+
 .limitField {
   flex: 1;
   display: grid;

@@ -1,5 +1,4 @@
-import { Chip, NumberFormatter } from '@mantine/core'
-import { useState } from 'react'
+import { Badge, NumberFormatter } from '@mantine/core'
 
 import classes from './channel_chip.module.css'
 
@@ -16,14 +15,11 @@ interface ChannelChipProps {
 }
 
 export function ChannelChip({ channel }: ChannelChipProps) {
-  const [checked, setChecked] = useState(channel.active)
-
   return (
-    <Chip
-      checked={checked}
-      onChange={(value) => setChecked(value)}
+    <Badge
       color={channel.color}
-      variant="outline"
+      size="lg"
+      // variant="outline"
     >
       {`CH${channel.identifier} - `}
       <span className={classes.reading}>
@@ -32,6 +28,6 @@ export function ChannelChip({ channel }: ChannelChipProps) {
         <NumberFormatter value={channel.current} decimalScale={3} fixedDecimalScale />
         {' A'}
       </span>
-    </Chip>
+    </Badge>
   )
 }

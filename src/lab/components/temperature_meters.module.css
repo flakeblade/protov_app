@@ -1,0 +1,34 @@
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.meterHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--mantine-spacing-xs);
+}
+
+.sectionLabel {
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.reading,
+.readingCompact {
+  font-family: var(--mantine-font-family-monospace);
+  font-variant-numeric: tabular-nums;
+  color: var(--mantine-color-dimmed);
+}
+
+.reading {
+  font-size: var(--mantine-font-size-sm);
+}
+
+.readingCompact {
+  font-size: var(--mantine-font-size-xs);
+}

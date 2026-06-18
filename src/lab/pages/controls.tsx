@@ -19,6 +19,7 @@ import { IconBolt } from '@tabler/icons-react'
 
 import classes from './controls.module.css'
 import type { Channel } from '../components/channel_chip'
+import { useLabView } from '../lab_view'
 
 const VOLTAGE_MAX = 20
 const CURRENT_MAX = 5
@@ -148,8 +149,9 @@ interface ParameterRowProps {
   min: number
   max: number
   setTooltip: string
-  protectionLabel: 'OVP' | 'OCP'
-  protectionTooltip: string
+  protectionLabel?: 'OVP' | 'OCP'
+  protectionTooltip?: string
+  showProtection?: boolean
 }
 
 function ParameterRow({
@@ -161,6 +163,7 @@ function ParameterRow({
   setTooltip,
   protectionLabel,
   protectionTooltip,
+  showProtection = true,
 }: ParameterRowProps) {
   const placeholder = `0.${'0'.repeat(DECIMALS)}–${max}.${'0'.repeat(DECIMALS)}`
 
@@ -168,7 +171,7 @@ function ParameterRow({
     <div className={classes.parameterRow}>
       <Text className={classes.rowLabel}>{label}</Text>
       <ReadingValue value={value} unit={unit} />
-      <div className={classes.limitStack}>
+      <div className={showProtection ? classes.limitStack : classes.limitStackSingle}>
         <LimitField
           label="SET"
           unit={unit}
@@ -177,14 +180,16 @@ function ParameterRow({
           placeholder={placeholder}
           tooltip={setTooltip}
         />
-        <LimitField
-          label={protectionLabel}
-          unit={unit}
-          min={min}
-          max={max}
-          placeholder={placeholder}
-          tooltip={protectionTooltip}
-        />
+        {showProtection && protectionLabel && protectionTooltip && (
+          <LimitField
+            label={protectionLabel}
+            unit={unit}
+            min={min}
+            max={max}
+            placeholder={placeholder}
+            tooltip={protectionTooltip}
+          />
+        )}
       </div>
     </div>
   )
@@ -203,6 +208,7 @@ function ChannelCard({
   regulationMode = 'CV',
 }: ChannelCardData) {
   const theme = useMantineTheme()
+  const { isEngineering } = useLabView()
   const borderColor = theme.colors[color as MantineColor][5]
 
   return (
@@ -248,6 +254,7 @@ function ChannelCard({
           setTooltip="Target voltage on output"
           protectionLabel="OVP"
           protectionTooltip="Over-voltage protection limit"
+          showProtection={isEngineering}
         />
 
         <ParameterRow
@@ -259,6 +266,7 @@ function ChannelCard({
           setTooltip="Target current on output"
           protectionLabel="OCP"
           protectionTooltip="Over-current protection limit"
+          showProtection={isEngineering}
         />
 
         <div className={classes.powerRow}>

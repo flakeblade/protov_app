@@ -1,0 +1,28 @@
+.card {
+  height: 100%;
+}
+
+.port {
+  font-size: var(--mantine-font-size-xs);
+}
+
+.badge {
+  padding-inline: 0.35rem;
+}
+
+.badgeCode {
+  font-size: 10px;
+}
+
+.sectionLabel {
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.consoleSection {
+  border-top: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  padding-top: var(--mantine-spacing-xs);
+  margin-top: var(--mantine-spacing-xs);
+}

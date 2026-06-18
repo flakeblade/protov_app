@@ -1,0 +1,65 @@
+.chart {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-sm);
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  overflow: hidden;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.crosshairLine {
+  stroke: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.selectionRect {
+  fill: light-dark(rgba(37, 99, 235, 0.12), rgba(96, 165, 250, 0.18));
+  stroke: light-dark(rgba(37, 99, 235, 0.45), rgba(96, 165, 250, 0.55));
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.seriesLine {
+  fill: none;
+  stroke-width: 1.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.axisLabel {
+  font-size: 10px;
+  fill: var(--mantine-color-dimmed);
+  font-family: var(--mantine-font-family);
+}
+
+.unitLabel {
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--mantine-color-dimmed);
+  font-family: var(--mantine-font-family);
+  letter-spacing: 0.02em;
+}
+
+.hoverReadout {
+  position: absolute;
+  top: var(--mantine-spacing-xs);
+  right: var(--mantine-spacing-xs);
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--mantine-radius-sm);
+  background: light-dark(rgba(255, 255, 255, 0.92), rgba(26, 27, 30, 0.92));
+  border: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--mantine-color-text);
+  pointer-events: none;
+}
