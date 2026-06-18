@@ -19,6 +19,7 @@
   z-index: 0;
   pointer-events: none;
   background: light-dark(var(--mantine-color-white), #000000);
+  isolation: isolate;
 }
 
 .scrollStage {

@@ -4,6 +4,19 @@ export interface Vec3Keyframe {
   z: number
 }
 
+export interface BlobKeyframe {
+  /** 0–1 across the canvas width. */
+  x: number
+  /** 0–1 across the canvas height. */
+  y: number
+  scale: number
+}
+
+export interface BlobPairKeyframe {
+  red: BlobKeyframe
+  blue: BlobKeyframe
+}
+
 export interface HeroSceneKeyframe {
   id: string
   /** Normalized scroll position 0–1 through the scroll stage. */
@@ -14,6 +27,8 @@ export interface HeroSceneKeyframe {
   scale: number
   /** 0 = assembled, 1 = fully blown up along vertical axis. */
   blowUp: number
+  /** CSS color blob positions for this scroll stop. */
+  blobs?: BlobPairKeyframe
 }
 
 export interface HeroSceneIntroConfig {
@@ -50,4 +65,9 @@ export interface HeroScenePose {
   rotation: Vec3Keyframe
   scale: number
   blowUp: number
+}
+
+export interface HeroBlobPose {
+  red: BlobKeyframe
+  blue: BlobKeyframe
 }

@@ -1,4 +1,7 @@
 import type {
+  BlobKeyframe,
+  BlobPairKeyframe,
+  HeroBlobPose,
   HeroSceneKeyframe,
   HeroSceneKeyframeConfig,
   HeroScenePose,
@@ -21,6 +24,21 @@ function lerpVec3(a: Vec3Keyframe, b: Vec3Keyframe, t: number): Vec3Keyframe {
   }
 }
 
+function lerpBlob(a: BlobKeyframe, b: BlobKeyframe, t: number): BlobKeyframe {
+  return {
+    x: lerp(a.x, b.x, t),
+    y: lerp(a.y, b.y, t),
+    scale: lerp(a.scale, b.scale, t),
+  }
+}
+
+function lerpBlobPair(a: BlobPairKeyframe, b: BlobPairKeyframe, t: number): HeroBlobPose {
+  return {
+    red: lerpBlob(a.red, b.red, t),
+    blue: lerpBlob(a.blue, b.blue, t),
+  }
+}
+
 function lerpKeyframe(a: HeroSceneKeyframe, b: HeroSceneKeyframe, t: number): HeroScenePose {
   return {
     position: lerpVec3(a.position, b.position, t),
@@ -28,6 +46,19 @@ function lerpKeyframe(a: HeroSceneKeyframe, b: HeroSceneKeyframe, t: number): He
     scale: lerp(a.scale, b.scale, t),
     blowUp: lerp(a.blowUp, b.blowUp, t),
   }
+}
+
+function blobPairFromKeyframe(keyframe: HeroSceneKeyframe): BlobPairKeyframe {
+  return (
+    keyframe.blobs ?? {
+      red: { x: 0.65, y: 0.35, scale: 1 },
+      blue: { x: 0.75, y: 0.55, scale: 1 },
+    }
+  )
+}
+
+function lerpKeyframeBlobs(a: HeroSceneKeyframe, b: HeroSceneKeyframe, t: number): HeroBlobPose {
+  return lerpBlobPair(blobPairFromKeyframe(a), blobPairFromKeyframe(b), t)
 }
 
 /** Map raw scroll progress to a pose by interpolating between adjacent keyframes. */
@@ -62,6 +93,78 @@ export function poseFromKeyframe(keyframe: HeroSceneKeyframe): HeroScenePose {
     rotation: { ...keyframe.rotation },
     scale: keyframe.scale,
     blowUp: keyframe.blowUp,
+  }
+}
+
+export function blobsFromKeyframe(keyframe: HeroSceneKeyframe): HeroBlobPose {
+  const pair = blobPairFromKeyframe(keyframe)
+  return {
+    red: { ...pair.red },
+    blue: { ...pair.blue },
+  }
+}
+
+/** Map raw scroll progress to blob positions by interpolating adjacent keyframes. */
+export function interpolateBlobsAtScroll(
+  config: HeroSceneKeyframeConfig,
+  scroll: number,
+): HeroBlobPose {
+  const sorted = [...config.keyframes].sort((a, b) => a.scroll - b.scroll)
+  const progress = clamp(scroll, 0, 1)
+
+  if (progress <= sorted[0].scroll) return blobsFromKeyframe(sorted[0])
+  if (progress >= sorted[sorted.length - 1].scroll) {
+    return blobsFromKeyframe(sorted[sorted.length - 1])
+  }
+
+  for (let i = 0; i < sorted.length - 1; i += 1) {
+    const current = sorted[i]
+    const next = sorted[i + 1]
+    if (progress >= current.scroll && progress <= next.scroll) {
+      const span = next.scroll - current.scroll
+      const t = span > 0 ? (progress - current.scroll) / span : 0
+      return lerpKeyframeBlobs(current, next, t)
+    }
+  }
+
+  return blobsFromKeyframe(sorted[sorted.length - 1])
+}
+
+export function introBlobsAtElapsed(
+  elapsed: number,
+  duration: number,
+  start: HeroBlobPose,
+  end: HeroBlobPose,
+): HeroBlobPose {
+  const t = easeOutSnap(clamp(elapsed / duration, 0, 1))
+  return {
+    red: lerpBlob(start.red, end.red, t),
+    blue: lerpBlob(start.blue, end.blue, t),
+  }
+}
+
+export function dampBlob(
+  current: BlobKeyframe,
+  target: BlobKeyframe,
+  lambda: number,
+  delta: number,
+): BlobKeyframe {
+  return {
+    x: damp(current.x, target.x, lambda, delta),
+    y: damp(current.y, target.y, lambda, delta),
+    scale: damp(current.scale, target.scale, lambda, delta),
+  }
+}
+
+export function dampBlobs(
+  current: HeroBlobPose,
+  target: HeroBlobPose,
+  lambda: number,
+  delta: number,
+): HeroBlobPose {
+  return {
+    red: dampBlob(current.red, target.red, lambda, delta),
+    blue: dampBlob(current.blue, target.blue, lambda, delta),
   }
 }
 

@@ -18,7 +18,11 @@
       "position": { "x": 0, "y": 0, "z": 0 },
       "rotation": { "x": 0, "y": 0, "z": 0 },
       "scale": 1,
-      "blowUp": 0
+      "blowUp": 0,
+      "blobs": {
+        "red": { "x": 0.58, "y": 0.26, "scale": 1.25 },
+        "blue": { "x": 0.82, "y": 0.68, "scale": 1.34 }
+      }
     },
     {
       "id": "connect-breadboard",
@@ -26,7 +30,11 @@
       "position": { "x": 0, "y": -0.75, "z": 0 },
       "rotation": { "x": 0, "y": 80, "z": 170 },
       "scale": 1.5,
-      "blowUp": 0
+      "blowUp": 0,
+      "blobs": {
+        "red": { "x": 0.65, "y": 0.33, "scale": 1.5 },
+        "blue": { "x": 0.35, "y": 0.55, "scale": 1.2 }
+      }
     },
     {
       "id": "adjust-power",
@@ -34,7 +42,11 @@
       "position": { "x": 0, "y": -0.75, "z": 0 },
       "rotation": { "x": 0, "y": 80, "z": 190 },
       "scale": 1.35,
-      "blowUp": 0
+      "blowUp": 0,
+      "blobs": {
+        "red": { "x": 0.7, "y": 0.36, "scale": 1.15 },
+        "blue": { "x": 0.40, "y": 0.58, "scale": 1.1 }
+      }
     },
     {
       "id": "end",
@@ -42,7 +54,11 @@
       "position": { "x": 0, "y": -0.1, "z": -0.4 },
       "rotation": { "x": 0, "y": -20, "z": -45 },
       "scale": 1,
-      "blowUp": 0
+      "blowUp": 0,
+      "blobs": {
+        "red": { "x": 0.60, "y": 0.45, "scale": 0.85 },
+        "blue": { "x": 0.86, "y": 0.72, "scale": 0.95 }
+      }
     }
   ]
 }
