@@ -7,9 +7,9 @@
     "rotation": { "x": 0, "y": -80, "z": -10 }
   },
   "intro": {
-    "duration": 2.5,
-    "blowUpStart": 50,
-    "blurStart": 20
+    "duration": 2,
+    "blowUpStart": 0.25,
+    "blurStart": 2
   },
   "keyframes": [
     {

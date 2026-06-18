@@ -87,7 +87,7 @@ export function easeOutSnap(t: number) {
   const x = clamp(t, 0, 1)
   if (x === 1) return 1
 
-  const rate = 11
+  const rate = 14
   const raw = 1 - Math.exp(-rate * x)
   const end = 1 - Math.exp(-rate)
   return raw / end

@@ -5,6 +5,7 @@ export const ASSEMBLY_GROUP_NAME = 'protov_mini_1'
 
 export interface ModelPart {
   object: Object3D
+  blowUpDirection: number
   basePosition: Vector3
 }
 
@@ -88,6 +89,15 @@ function scaleToUnit(root: Object3D) {
   }
 }
 
+function blowUpDirection(name: string): number {
+  const s = name.toLowerCase()
+
+  if (s.includes("top")) return +1.0;
+  if (s.includes("bottom")) return -1.0;
+
+  return -0.55;
+}
+
 /**
  * Extract, dedupe, center centroid at origin, and scale to unit size.
  * Runs once when the GLB finishes loading — before any rendering or animation.
@@ -103,10 +113,14 @@ export function prepareModelFromGltf(gltfScene: Object3D): PreparedModel | null 
   centerAtOrigin(root)
   scaleToUnit(root)
 
-  const parts = extractBlowUpParts(device).map((object) => ({
-    object,
-    basePosition: object.position.clone(),
-  }))
+  const parts = extractBlowUpParts(device).map((object) => {
+  const dir = blowUpDirection(object.parent?.name ?? "");
+    return {
+      object,
+      blowUpDirection: dir,
+      basePosition: object.position.clone()
+    }
+  })
 
   return { root, parts }
 }
@@ -117,9 +131,11 @@ export function applyBlowUpSpread(
   spread: number,
 ) {
   const centerIndex = (parts.length - 1) / 2 + 0.5
-
+  
   for (let i = 0; i < parts.length; i += 1) {
-    const { object, basePosition } = parts[i]
-    object.position.y = basePosition.y + (i - centerIndex) * spread * blowUp
+    const skew = 1.0 + Math.abs(i - centerIndex) / parts.length
+    const { object, blowUpDirection, basePosition } = parts[i]
+    object.position.y = basePosition.y + blowUpDirection * skew * spread * blowUp
+    // object.position.y = basePosition.y + blowUpDirection * spread * blowUp
   }
 }
