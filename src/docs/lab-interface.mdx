@@ -1,0 +1,19 @@
+---
+title: "Lab Interface"
+category: "Lab Interface"
+description: "Use the web lab to control rails, limits, and live measurements."
+---
+
+# Lab Interface
+
+The online lab provides per-channel voltage and current control with live telemetry.
+
+Use the Devices view to confirm connectivity, then Controls for setpoints and limits.
+
+## Typical workflow
+
+Select a device, set conservative limits, enable output, and monitor measurements while adjusting load.
+
+```ts
+await lab.setChannel({ channel: 1, voltage: 3.3, currentLimit: 0.5 })
+```

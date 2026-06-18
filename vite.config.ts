@@ -1,12 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import mdx from '@mdx-js/rollup'
+import remarkGfm from 'remark-gfm'
+import remarkFrontmatter from 'remark-frontmatter'
+import rehypeHighlight from 'rehype-highlight'
 import { copyFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 // https://vite.dev/config/
-export default defineConfig(({ command, isPreview}) => ({
+export default defineConfig(({ command, isPreview }) => ({
   base: command === 'build' || isPreview ? '/protov_app/' : '/',
   plugins: [
+    mdx({
+      remarkPlugins: [remarkGfm, remarkFrontmatter],
+      rehypePlugins: [rehypeHighlight],
+    }),
     react(),
     {
       name: 'gh-pages-spa-fallback',

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Anchor, Button, Group, Kbd } from '@mantine/core'
 import { spotlight } from '@mantine/spotlight'
 import {
@@ -8,6 +9,7 @@ import {
   IconSearch,
 } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useNavPage } from '../hooks/useNavPage'
 import { ActionToggle } from '../lab/components/theme_toggle'
 import classes from './AppNavbarActions.module.css'
@@ -15,8 +17,35 @@ import classes from './AppNavbarActions.module.css'
 const CROWD_SUPPLY_URL =
   'https://www.crowdsupply.com/flake-and-blade-robotics-design/protov-mini'
 
+interface NavActionButtonProps {
+  icon: ReactNode
+  label: string
+  to: string
+  className?: string
+}
+
+function NavActionButton({ icon, label, to, className }: NavActionButtonProps) {
+  const isMobile = useIsMobile()
+
+  return (
+    <Button
+      component={Link}
+      to={to}
+      variant="subtle"
+      color="gray"
+      size="sm"
+      className={className}
+      leftSection={isMobile ? undefined : icon}
+      aria-label={label}
+    >
+      {isMobile ? icon : <span className={classes.navButtonLabel}>{label}</span>}
+    </Button>
+  )
+}
+
 export function AppNavbarActions() {
   const page = useNavPage()
+  const isMobile = useIsMobile()
 
   return (
     <Group gap="sm">
@@ -26,55 +55,43 @@ export function AppNavbarActions() {
         size="sm"
         className={classes.searchButton}
         onClick={() => spotlight.open()}
-        leftSection={<IconSearch size={16} />}
+        leftSection={isMobile ? undefined : <IconSearch size={16} />}
         aria-label="Search"
       >
-        <span className={classes.searchLabel}>Search</span>
-        <Kbd size="xs" className={classes.searchKbd}>
-          ⌘K
-        </Kbd>
+        {isMobile ? (
+          <IconSearch size={16} />
+        ) : (
+          <>
+            <span className={classes.searchLabel}>Search</span>
+            <Kbd size="xs" className={classes.searchKbd}>
+              ⌘K
+            </Kbd>
+          </>
+        )}
       </Button>
       {page !== 'home' && (
-        <Button
-          component={Link}
+        <NavActionButton
           to="/"
-          variant="subtle"
-          color="gray"
-          size="sm"
+          icon={<IconHome size={16} />}
+          label="Home"
           className={classes.navButton}
-          leftSection={<IconHome size={16} />}
-          aria-label="Home"
-        >
-          <span className={classes.navButtonLabel}>Home</span>
-        </Button>
+        />
       )}
       {page !== 'lab' && (
-        <Button
-          component={Link}
+        <NavActionButton
           to="/lab"
-          variant="subtle"
-          color="gray"
-          size="sm"
+          icon={<IconFlask size={16} />}
+          label="Lab"
           className={classes.navButton}
-          leftSection={<IconFlask size={16} />}
-          aria-label="Lab"
-        >
-          <span className={classes.navButtonLabel}>Lab</span>
-        </Button>
+        />
       )}
       {page !== 'docs' && (
-        <Button
-          component={Link}
+        <NavActionButton
           to="/docs"
-          variant="subtle"
-          color="gray"
-          size="sm"
+          icon={<IconBook size={16} />}
+          label="Docs"
           className={classes.navButton}
-          leftSection={<IconBook size={16} />}
-          aria-label="Docs"
-        >
-          <span className={classes.navButtonLabel}>Docs</span>
-        </Button>
+        />
       )}
       {page === 'home' && (
         <Anchor

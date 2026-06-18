@@ -5,8 +5,9 @@ import {
   IconGraph,
   IconHeartbeat,
 } from '@tabler/icons-react'
-import { Code, Group, Stack, Text } from '@mantine/core'
+import { Group, Stack } from '@mantine/core'
 import { NavLink } from 'react-router-dom'
+import { SidebarBrand } from '../components/SidebarBrand'
 
 import classes from './navbar.module.css'
 import { ConnectedDevicesChip } from './components/connected_devices_chip'
@@ -20,11 +21,16 @@ const data = [
   { link: '/lab/telemetry', label: 'Telemetry', icon: IconHeartbeat },
 ]
 
-export function NavbarSimple() {
+interface NavbarSimpleProps {
+  onNavigate?: () => void
+}
+
+export function NavbarSimple({ onNavigate }: NavbarSimpleProps) {
   const links = data.map((item) => (
     <NavLink
       key={item.label}
       to={item.link}
+      onClick={onNavigate}
       className={({ isActive }) =>
         isActive ? `${classes.link} ${classes.linkActive}` : classes.link
       }
@@ -47,18 +53,7 @@ export function NavbarSimple() {
             </Group>
           </Stack>
 
-          <div className={classes.sidebarBrand}>
-
-            <Text className={classes.brandName}>
-              Flake &amp; Blade Robotics Design Inc.
-            </Text>
-            <Group>
-              <Text className={classes.copyright}>© 2026</Text>
-              <Code className={classes.version} fw={600}>
-                v0.1.0
-              </Code>
-            </Group>
-          </div>
+          <SidebarBrand />
         </Stack>
       </div>
     </nav>

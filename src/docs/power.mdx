@@ -1,0 +1,22 @@
+---
+title: "Power"
+category: "Power"
+description: "USB-C PD input, channel limits, and safe operating envelopes."
+---
+
+# Power
+
+Each channel supports up to 20 V and 5 A with USB-C PD input up to 100 W.
+
+Configure per-channel limits in the lab interface before applying load.
+
+## Safe operating envelope
+
+Start below your target voltage, confirm current draw, then ramp to the desired setpoint.
+
+```ts
+const channelLimits = {
+  voltage: 20,
+  current: 5,
+}
+```

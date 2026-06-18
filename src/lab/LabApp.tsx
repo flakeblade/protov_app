@@ -1,4 +1,6 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useDisclosure } from '@mantine/hooks'
 import { AppShell, Burger } from '@mantine/core'
 import { AppNavbar } from '../components/AppNavbar'
@@ -11,7 +13,9 @@ import { GraphsPage } from './pages/graphs'
 import { TelemetryPage } from './pages/telemetry'
 
 export default function LabApp() {
-  const [mobileOpened, { toggle: toggleMobile }] = useDisclosure()
+  const isMobile = useIsMobile()
+  const location = useLocation()
+  const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure()
   const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true)
 
   const sidebarToggle = (
@@ -31,6 +35,12 @@ export default function LabApp() {
     </>
   )
 
+  useEffect(() => {
+    if (isMobile) {
+      closeMobile()
+    }
+  }, [location.pathname, isMobile, closeMobile])
+
   return (
     <>
       <HomeSpotlight />
@@ -44,11 +54,11 @@ export default function LabApp() {
         }}
       >
         <AppShell.Header>
-          <AppNavbar variant="embedded" leftSection={sidebarToggle} />
+          <AppNavbar variant="embedded" tone="app" leftSection={sidebarToggle} />
         </AppShell.Header>
 
         <AppShell.Navbar p="sm">
-          <NavbarSimple />
+          <NavbarSimple onNavigate={closeMobile} />
         </AppShell.Navbar>
 
         <AppShell.Main>

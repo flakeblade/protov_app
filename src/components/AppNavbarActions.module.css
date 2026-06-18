@@ -44,15 +44,22 @@
     display: block;
   }
 
-  .navButton {
-    padding-inline: var(--mantine-spacing-xs);
-  }
-
+  .navButton,
   .searchButton {
-    padding-inline: var(--mantine-spacing-xs);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    min-width: 34px;
+    padding-inline: 0;
   }
 
   .orderLink {
-    padding-inline: var(--mantine-spacing-xs);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    min-width: 34px;
+    padding-inline: 0;
   }
 }

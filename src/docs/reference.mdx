@@ -1,0 +1,25 @@
+---
+title: "Reference"
+category: "Reference"
+description: "Command reference, telemetry fields, and integration notes."
+---
+
+# Reference
+
+This page collects electrical specifications, telemetry fields, and integration constants.
+
+Use it as a quick lookup while developing automations around the lab API.
+
+## Electrical limits
+
+| Parameter | Value |
+| --- | --- |
+| Channels | 2 |
+| Voltage range | 0–20 V |
+| Current range | 0–5 A |
+
+```json
+{
+  "telemetry": ["voltage", "current", "power"]
+}
+```
