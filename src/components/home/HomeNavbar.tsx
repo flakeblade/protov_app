@@ -1,9 +1,12 @@
-import { Button, Container, Group } from '@mantine/core'
+import { Anchor, Button, Container, Group } from '@mantine/core'
 import { IconBook, IconFlask } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../../lab/components/logo'
 import { ActionToggle } from '../../lab/components/theme_toggle'
 import classes from './HomeNavbar.module.css'
+
+const CROWD_SUPPLY_URL =
+  'https://www.crowdsupply.com/flake-and-blade-robotics-design/protov-mini'
 
 export function HomeNavbar() {
   return (
@@ -37,6 +40,14 @@ export function HomeNavbar() {
             >
               Docs
             </Button>
+            <Anchor
+              href={CROWD_SUPPLY_URL}
+              target="_blank"
+              rel="noreferrer"
+              className={classes.orderLink}
+            >
+              Order ↗
+            </Anchor>
             <ActionToggle />
           </Group>
         </Group>

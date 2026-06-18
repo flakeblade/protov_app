@@ -46,17 +46,21 @@ export default function HomePage() {
 
                 <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
                   <HeroScrollPanel
+                    eyebrow="01"
                     title="Connect to a breadboard"
                     subtitle="ProtoV MINI plugs directly into standard breadboard power rails with dual 2×5 pin headers — USB-C powered, credit-card sized, and built for clean bench setups in the lab or field."
-                    buttonLabel="About hardware"
+                    specs={['2×5 pin headers', 'USB-C', 'credit-card sized', 'breadboard compatible']}
+                    buttonLabel="See specs"
                     buttonTo="/docs"
                   />
                 </div>
 
                 <div className={classes.panel} style={{ minHeight: PANEL_HEIGHT }}>
                   <HeroScrollPanel
+                    eyebrow="02"
                     title="Adjust power"
                     subtitle="Set voltage and current per channel with real-time measurement — up to 20 V and 5 A per rail. Control everything from the online lab interface."
+                    specs={['0–20 V', '0–5 A', '100 W USB-C PD', 'per-channel control']}
                     buttonLabel="Open lab"
                     buttonTo="/lab"
                   />

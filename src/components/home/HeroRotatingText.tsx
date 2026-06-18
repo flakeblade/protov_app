@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Stack } from '@mantine/core'
+import { Button, Stack } from '@mantine/core'
 import classes from './HeroRotatingText.module.css'
 
 const WORDS = ['prototyping', 'experimentation', 'creativity'] as const
 const INTERVAL_MS = 2800
+const CROWD_SUPPLY_URL =
+  'https://www.crowdsupply.com/flake-and-blade-robotics-design/protov-mini'
 
 export function HeroRotatingText() {
   const [index, setIndex] = useState(0)
@@ -35,11 +37,23 @@ export function HeroRotatingText() {
         </span>
       </h1>
 
-      <p className={classes.subtitle}>
-        ProtoV MINI is a credit-card-sized, dual-channel USB Type-C power supply
-        that connects directly to your breadboard rails — up to 20 V per channel
-        with real-time measurement in a footprint built for modern prototyping.
-      </p>
+      <Stack gap="md" className={classes.heroCopy}>
+        <p className={classes.subtitle}>
+          Credit-card sized. Dual-channel. USB Type-C powered.
+        </p>
+        <Button
+          component="a"
+          href={CROWD_SUPPLY_URL}
+          target="_blank"
+          rel="noreferrer"
+          variant="default"
+          color="gray"
+          size="md"
+          className={classes.orderButton}
+        >
+          Order on Crowd Supply →
+        </Button>
+      </Stack>
     </Stack>
   )
 }

@@ -2,6 +2,27 @@
   max-width: 34rem;
 }
 
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: Inter, var(--mantine-font-family);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--mantine-color-dimmed);
+}
+
+.step::after {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: color-mix(in srgb, currentColor 35%, transparent);
+}
+
 .title {
   font-family: Inter, var(--mantine-font-family);
   font-size: clamp(2.25rem, 4.5vw, 3.75rem);
@@ -19,6 +40,25 @@
   line-height: 1.6;
   margin: 0;
   color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-5));
+}
+
+.specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.specPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 999px;
+  font-family: Inter, var(--mantine-font-family);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--mantine-color-dimmed);
 }
 
 .button {

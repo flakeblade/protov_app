@@ -1,33 +1,111 @@
 .footer {
   position: relative;
   z-index: 1;
-  background: light-dark(var(--mantine-color-white), #000000);
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
   border-top: 1px solid light-dark(
     var(--mantine-color-gray-3),
     var(--mantine-color-dark-4)
   );
-  padding: var(--mantine-spacing-xl) 0;
+  padding: 48px 0;
   margin-top: auto;
 }
 
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--mantine-spacing-xl);
+  align-items: start;
+}
+
+.brandColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+  min-height: 100%;
+}
+
+.brandLogo {
+  display: block;
+  width: auto;
+  height: 17px;
+  opacity: 0.7;
+  transition:
+    opacity 150ms ease,
+    filter 150ms ease;
+  margin-bottom: 1.4em;
+}
+
 .company {
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.01em;
+  line-height: 1.4;
   color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
 }
 
+.tagline {
+  max-width: 260px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--mantine-color-dimmed);
+}
+
+.copyright {
+  margin-top: auto;
+  padding-top: var(--mantine-spacing-md);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--mantine-color-dimmed);
+}
+
+.columnLabel {
+  margin-bottom: var(--mantine-spacing-sm);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mantine-color-dimmed);
+}
+
+.linkList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .link {
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mantine-color-dimmed);
   text-decoration: none;
   transition: color 150ms ease;
 
   @mixin hover {
-    color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
+    color: var(--mantine-color-anchor);
   }
 }
 
-.meta {
-  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-5));
-  font-size: var(--mantine-font-size-sm);
-  line-height: 1.6;
+.specList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mantine-color-dimmed);
+}
+
+@media (max-width: 48em) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: var(--mantine-spacing-lg);
+  }
+
+  .copyright {
+    margin-top: 0;
+    padding-top: 0;
+  }
 }
