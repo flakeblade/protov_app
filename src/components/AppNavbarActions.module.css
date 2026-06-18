@@ -1,36 +1,15 @@
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  height: 60px;
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  background: light-dark(
-    rgba(255, 255, 255, 0.72),
-    rgba(0, 0, 0, 0.55)
-  );
-  border-bottom: 1px solid light-dark(
-    rgba(0, 0, 0, 0.06),
-    rgba(255, 255, 255, 0.08)
-  );
-}
-
-.logoLink {
-  display: flex;
-  align-items: center;
-  height: 100%;
-}
-
-.logo {
-  padding-top: 7px;
-  height: 30px;
-}
-
 .navButton {
   font-weight: 500;
   letter-spacing: 0.01em;
+}
+
+.searchButton {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.searchKbd {
+  margin-left: 6px;
 }
 
 .orderLink {
@@ -55,7 +34,9 @@
 
 @media (max-width: 48em) {
   .navButtonLabel,
-  .orderLabel {
+  .orderLabel,
+  .searchLabel,
+  .searchKbd {
     display: none;
   }
 
@@ -64,6 +45,10 @@
   }
 
   .navButton {
+    padding-inline: var(--mantine-spacing-xs);
+  }
+
+  .searchButton {
     padding-inline: var(--mantine-spacing-xs);
   }
 

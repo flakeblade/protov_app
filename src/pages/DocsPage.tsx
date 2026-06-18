@@ -1,31 +1,22 @@
-import { Button, Container, Stack, Text, Title } from '@mantine/core'
-import { IconArrowLeft } from '@tabler/icons-react'
-import { Link } from 'react-router-dom'
-import { Logo } from '../lab/components/logo'
+import { Container, Stack, Text, Title } from '@mantine/core'
+import { AppNavbar } from '../components/AppNavbar'
+import { HomeSpotlight } from '../components/home/HomeSpotlight'
 
 export default function DocsPage() {
   return (
-    <Container size="sm" py="xl">
-      <Stack gap="lg">
-        <Logo height={32} />
-
-        <Stack gap="xs">
-          <Title order={1}>Documentation</Title>
-          <Text c="dimmed">
-            Documentation will live here. This is a temporary placeholder.
-          </Text>
+    <>
+      <AppNavbar />
+      <HomeSpotlight />
+      <Container size="sm" py="xl" pt={88}>
+        <Stack gap="lg">
+          <Stack gap="xs">
+            <Title order={1}>Documentation</Title>
+            <Text c="dimmed">
+              Documentation will live here. This is a temporary placeholder.
+            </Text>
+          </Stack>
         </Stack>
-
-        <Button
-          component={Link}
-          to="/"
-          variant="default"
-          leftSection={<IconArrowLeft size={18} />}
-          w="fit-content"
-        >
-          Back to home
-        </Button>
-      </Stack>
-    </Container>
+      </Container>
+    </>
   )
 }

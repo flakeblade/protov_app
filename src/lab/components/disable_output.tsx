@@ -14,7 +14,7 @@ export function DisableOutput() {
       <ActionIcon
         onClick={handleClick}
         variant={on ? 'filled' : 'outline'}
-        size="lg"
+        size="xl"
         radius="md"
         aria-label="Disable All"
         color={on ? 'red' : 'grey'}

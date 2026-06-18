@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react'
 import { Container } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { HomeNavbar } from '../components/home/HomeNavbar'
+import { AppNavbar } from '../components/AppNavbar'
+import { HomeSpotlight } from '../components/home/HomeSpotlight'
 import { HeroRotatingText } from '../components/home/HeroRotatingText'
 import { HeroScrollPanel } from '../components/home/HeroScrollPanel'
 import { HomeFooter } from '../components/home/HomeFooter'
@@ -32,7 +33,8 @@ export default function HomePage() {
 
   return (
     <div className={classes.page}>
-      <HomeNavbar />
+      <AppNavbar />
+      <HomeSpotlight />
 
       <div className={classes.scrollExperience}>
         <div className={classes.canvasSticky} aria-hidden>
