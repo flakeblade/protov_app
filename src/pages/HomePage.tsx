@@ -2,6 +2,7 @@
 // import { Suspense, useRef } from 'react'
 import { useEffect, useRef } from 'react'
 import { Container } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { HomeNavbar } from '../components/home/HomeNavbar'
 import { HeroRotatingText } from '../components/home/HeroRotatingText'
 import { HeroScrollPanel } from '../components/home/HeroScrollPanel'
@@ -21,6 +22,9 @@ const PANEL_HEIGHT = 'calc(100vh - 60px)'
 export default function HomePage() {
   const scrollStageRef = useRef<HTMLElement>(null)
   const scrollProgress = useScrollStageProgress(scrollStageRef)
+  const isMobile = useMediaQuery('(max-width: 48em)', undefined, {
+    getInitialValueInEffect: true,
+  })
 
   useEffect(() => {
     preloadHeroGlb()
@@ -33,7 +37,7 @@ export default function HomePage() {
       <div className={classes.scrollExperience}>
         <div className={classes.canvasSticky} aria-hidden>
           <HeroColorBlobs scrollProgress={scrollProgress} />
-          <HeroScene scrollProgress={scrollProgress} />
+          <HeroScene scrollProgress={scrollProgress} isMobile={isMobile} />
         </div>
 
         <section ref={scrollStageRef} className={classes.scrollStage}>

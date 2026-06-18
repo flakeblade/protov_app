@@ -101,7 +101,7 @@
 @media (max-width: 48em) {
   .grid {
     grid-template-columns: 1fr;
-    gap: var(--mantine-spacing-lg);
+    gap: var(--mantine-spacing-xl);
   }
 
   .copyright {

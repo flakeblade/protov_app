@@ -48,3 +48,26 @@
     color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
   }
 }
+
+.orderIcon {
+  display: none;
+}
+
+@media (max-width: 48em) {
+  .navButtonLabel,
+  .orderLabel {
+    display: none;
+  }
+
+  .orderIcon {
+    display: block;
+  }
+
+  .navButton {
+    padding-inline: var(--mantine-spacing-xs);
+  }
+
+  .orderLink {
+    padding-inline: var(--mantine-spacing-xs);
+  }
+}

@@ -1,5 +1,4 @@
 import { Suspense, useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
-// import { use, useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
 import { useComputedColorScheme } from '@mantine/core'
@@ -9,7 +8,7 @@ import { Group, NoToneMapping, SRGBColorSpace } from 'three'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { HERO_SCENE_GLB_URL } from '../../scene/heroAssetUrls'
-import keyframeData from '../../data/heroSceneKeyframes.json'
+import { getHeroKeyframeConfig } from '../../scene/heroKeyframeConfig'
 import {
   dampPose,
   introPoseAtElapsed,
@@ -29,15 +28,9 @@ import { heroViewportLayout } from '../../scene/sceneLayout'
 import type { HeroSceneKeyframeConfig, HeroScenePose } from '../../types/heroSceneKeyframes'
 import classes from './HeroScene.module.css'
 
-const KEYFRAME_CONFIG = keyframeData as HeroSceneKeyframeConfig
-const MODEL_SCALE = KEYFRAME_CONFIG.modelScale ?? 1
-const MODEL_OFFSET = KEYFRAME_CONFIG.modelOffset ?? {
-  position: { x: 0, y: 0, z: 0 },
-  rotation: { x: 0, y: 0, z: 0 },
+function catalyzeKeyframe(config: HeroSceneKeyframeConfig) {
+  return config.keyframes.find((keyframe) => keyframe.id === 'catalyze') ?? config.keyframes[0]
 }
-const CATALYZE_KEYFRAME =
-  KEYFRAME_CONFIG.keyframes.find((keyframe) => keyframe.id === 'catalyze') ??
-  KEYFRAME_CONFIG.keyframes[0]
 
 function IsometricCamera() {
   const { size } = useThree()
@@ -59,15 +52,17 @@ function IsometricCamera() {
 function IntroBlurController({
   viewportRef,
   introElapsed,
+  keyframeConfig,
 }: {
   viewportRef: RefObject<HTMLDivElement | null>
   introElapsed: RefObject<number>
+  keyframeConfig: HeroSceneKeyframeConfig
 }) {
   useFrame(() => {
     const viewport = viewportRef.current
     if (!viewport) return
 
-    const intro = KEYFRAME_CONFIG.intro
+    const intro = keyframeConfig.intro
     if (!intro?.blurStart) {
       viewport.style.filter = ''
       return
@@ -85,13 +80,13 @@ function DeviceModel({
   scrollProgress,
   modelColors,
   introElapsed,
+  keyframeConfig,
 }: {
   scrollProgress: number
   modelColors: ModelColors
   introElapsed: RefObject<number>
+  keyframeConfig: HeroSceneKeyframeConfig
 }) {
-  // use(MeshoptDecoder.ready)
-
   const gltf = useLoader(GLTFLoader, HERO_SCENE_GLB_URL, (loader) => {
     loader.setMeshoptDecoder(MeshoptDecoder)
   }) as GLTF
@@ -99,13 +94,18 @@ function DeviceModel({
   const poseRef = useRef<Group>(null)
   const outlineRef = useRef<OutlineRenderer | null>(null)
   const { size } = useThree()
+  const modelScale = keyframeConfig.modelScale ?? 1
+  const modelOffset = keyframeConfig.modelOffset ?? {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+  }
   const introStartPose = useRef<HeroScenePose>({
-    ...poseFromKeyframe(CATALYZE_KEYFRAME),
-    blowUp: KEYFRAME_CONFIG.intro?.blowUpStart ?? 1,
+    ...poseFromKeyframe(catalyzeKeyframe(keyframeConfig)),
+    blowUp: keyframeConfig.intro?.blowUpStart ?? 1,
   })
   const smoothedPose = useRef<HeroScenePose>({
-    ...poseFromKeyframe(CATALYZE_KEYFRAME),
-    blowUp: KEYFRAME_CONFIG.intro?.blowUpStart ?? 1,
+    ...poseFromKeyframe(catalyzeKeyframe(keyframeConfig)),
+    blowUp: keyframeConfig.intro?.blowUpStart ?? 1,
   })
 
   const model = useMemo(() => prepareModelFromGltf(gltf.scene), [gltf.scene])
@@ -123,10 +123,10 @@ function DeviceModel({
   useFrame((_, delta) => {
     if (!poseRef.current || !model) return
 
-    const target = interpolatePoseAtScroll(KEYFRAME_CONFIG, scrollProgress)
-    const intro = KEYFRAME_CONFIG.intro
+    const target = interpolatePoseAtScroll(keyframeConfig, scrollProgress)
+    const intro = keyframeConfig.intro
     const introActive = intro !== undefined && introElapsed.current < intro.duration
-    const lambda = KEYFRAME_CONFIG.smoothing
+    const lambda = keyframeConfig.smoothing
 
     if (introActive) {
       introElapsed.current += delta
@@ -145,18 +145,18 @@ function DeviceModel({
     const deg = Math.PI / 180
 
     poseRef.current.position.set(
-      position.x + MODEL_OFFSET.position.x + layout.offsetX,
-      position.y + MODEL_OFFSET.position.y,
-      position.z + MODEL_OFFSET.position.z,
+      position.x + modelOffset.position.x + layout.offsetX,
+      position.y + modelOffset.position.y,
+      position.z + modelOffset.position.z,
     )
     poseRef.current.rotation.set(
-      (rotation.x + MODEL_OFFSET.rotation.x) * deg,
-      (rotation.y + MODEL_OFFSET.rotation.y) * deg,
-      (rotation.z + MODEL_OFFSET.rotation.z) * deg,
+      (rotation.x + modelOffset.rotation.x) * deg,
+      (rotation.y + modelOffset.rotation.y) * deg,
+      (rotation.z + modelOffset.rotation.z) * deg,
     )
-    poseRef.current.scale.setScalar(scale * MODEL_SCALE)
+    poseRef.current.scale.setScalar(scale * modelScale)
 
-    applyBlowUpSpread(model.parts, blowUp, KEYFRAME_CONFIG.blowUpSpread)
+    applyBlowUpSpread(model.parts, blowUp, keyframeConfig.blowUpSpread)
   })
 
   if (!model) return null
@@ -172,10 +172,12 @@ function SceneContent({
   scrollProgress,
   modelColors,
   viewportRef,
+  keyframeConfig,
 }: {
   scrollProgress: number
   modelColors: ModelColors
   viewportRef: RefObject<HTMLDivElement | null>
+  keyframeConfig: HeroSceneKeyframeConfig
 }) {
   const introElapsed = useRef(0)
 
@@ -183,11 +185,16 @@ function SceneContent({
     <>
       <IsometricCamera />
       <ambientLight intensity={1} />
-      <IntroBlurController viewportRef={viewportRef} introElapsed={introElapsed} />
+      <IntroBlurController
+        viewportRef={viewportRef}
+        introElapsed={introElapsed}
+        keyframeConfig={keyframeConfig}
+      />
       <DeviceModel
         scrollProgress={scrollProgress}
         modelColors={modelColors}
         introElapsed={introElapsed}
+        keyframeConfig={keyframeConfig}
       />
     </>
   )
@@ -195,10 +202,12 @@ function SceneContent({
 
 interface HeroSceneProps {
   scrollProgress: number
+  isMobile?: boolean
 }
 
-export default function HeroScene({ scrollProgress }: HeroSceneProps) {
+export default function HeroScene({ scrollProgress, isMobile = false }: HeroSceneProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
+  const keyframeConfig = useMemo(() => getHeroKeyframeConfig(isMobile), [isMobile])
   const colorScheme = useComputedColorScheme('light', {
     getInitialValueInEffect: true,
   })
@@ -211,7 +220,7 @@ export default function HeroScene({ scrollProgress }: HeroSceneProps) {
     <div ref={viewportRef} className={classes.viewport}>
       <Canvas
         className={classes.canvas}
-        dpr={[1, 1.5]}
+        dpr={isMobile ? [1, 1] : [1, 1.5]}
         gl={{
           alpha: true,
           antialias: true,
@@ -221,9 +230,11 @@ export default function HeroScene({ scrollProgress }: HeroSceneProps) {
       >
         <Suspense fallback={null}>
           <SceneContent
+            key={isMobile ? 'mobile' : 'desktop'}
             scrollProgress={scrollProgress}
             modelColors={modelColors}
             viewportRef={viewportRef}
+            keyframeConfig={keyframeConfig}
           />
         </Suspense>
       </Canvas>

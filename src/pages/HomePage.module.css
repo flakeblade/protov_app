@@ -59,11 +59,11 @@
 @media (max-width: 48em) {
   .scrollLayout {
     grid-template-columns: 1fr;
-    gap: 0;
   }
 
   .panel {
-    min-height: auto !important;
+    /* min-height: auto !important; */
+    min-height: calc(160vh) !important;
     padding: var(--mantine-spacing-xl) 0 var(--mantine-spacing-md);
   }
 

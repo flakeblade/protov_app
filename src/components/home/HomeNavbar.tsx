@@ -1,5 +1,5 @@
 import { Anchor, Button, Container, Group } from '@mantine/core'
-import { IconBook, IconFlask } from '@tabler/icons-react'
+import { IconArrowUpRight, IconBook, IconFlask } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../../lab/components/logo'
 import { ActionToggle } from '../../lab/components/theme_toggle'
@@ -26,8 +26,9 @@ export function HomeNavbar() {
               size="sm"
               className={classes.navButton}
               leftSection={<IconFlask size={16} />}
+              aria-label="Lab"
             >
-              Lab
+              <span className={classes.navButtonLabel}>Lab</span>
             </Button>
             <Button
               component={Link}
@@ -37,16 +38,19 @@ export function HomeNavbar() {
               size="sm"
               className={classes.navButton}
               leftSection={<IconBook size={16} />}
+              aria-label="Docs"
             >
-              Docs
+              <span className={classes.navButtonLabel}>Docs</span>
             </Button>
             <Anchor
               href={CROWD_SUPPLY_URL}
               target="_blank"
               rel="noreferrer"
               className={classes.orderLink}
+              aria-label="Order on Crowd Supply"
             >
-              Order ↗
+              <IconArrowUpRight size={16} className={classes.orderIcon} />
+              <span className={classes.orderLabel}>Order ↗</span>
             </Anchor>
             <ActionToggle />
           </Group>
