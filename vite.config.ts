@@ -4,8 +4,8 @@ import { copyFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/protov_app/' : '/',
+export default defineConfig(({ command, isPreview}) => ({
+  base: command === 'build' || isPreview ? '/protov_app/' : '/',
   plugins: [
     react(),
     {
