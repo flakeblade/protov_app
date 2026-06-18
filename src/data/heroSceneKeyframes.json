@@ -9,7 +9,9 @@
   "intro": {
     "duration": 2,
     "blowUpStart": 0.25,
-    "blurStart": 2
+    "blurStart": 2,
+    "blobAppearDelay": 0.7,
+    "blobAppearDuration": 1.4
   },
   "keyframes": [
     {
@@ -21,7 +23,8 @@
       "blowUp": 0,
       "blobs": {
         "red": { "x": 0.58, "y": 0.26, "scale": 1.25 },
-        "blue": { "x": 0.82, "y": 0.68, "scale": 1.34 }
+        "blue": { "x": 0.82, "y": 0.68, "scale": 1.34 },
+        "purple": { "x": 0.24, "y": 0.50, "scale": 1.15 }
       }
     },
     {
@@ -33,7 +36,8 @@
       "blowUp": 0,
       "blobs": {
         "red": { "x": 0.65, "y": 0.33, "scale": 1.5 },
-        "blue": { "x": 0.35, "y": 0.55, "scale": 1.2 }
+        "blue": { "x": 0.35, "y": 0.55, "scale": 1.2 },
+        "purple": { "x": 0.2, "y": 0.52, "scale": 1.25 }
       }
     },
     {
@@ -45,7 +49,8 @@
       "blowUp": 0,
       "blobs": {
         "red": { "x": 0.7, "y": 0.36, "scale": 1.15 },
-        "blue": { "x": 0.40, "y": 0.58, "scale": 1.1 }
+        "blue": { "x": 0.40, "y": 0.58, "scale": 1.1 },
+        "purple": { "x": 0.26, "y": 0.66, "scale": 1.2 }
       }
     },
     {
@@ -57,7 +62,8 @@
       "blowUp": 0,
       "blobs": {
         "red": { "x": 0.60, "y": 0.45, "scale": 0.85 },
-        "blue": { "x": 0.86, "y": 0.72, "scale": 0.95 }
+        "blue": { "x": 0.86, "y": 0.72, "scale": 0.95 },
+        "purple": { "x": 0.18, "y": 0.55, "scale": 0.95 }
       }
     }
   ]

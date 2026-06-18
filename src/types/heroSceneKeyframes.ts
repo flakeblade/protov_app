@@ -12,9 +12,10 @@ export interface BlobKeyframe {
   scale: number
 }
 
-export interface BlobPairKeyframe {
+export interface BlobSetKeyframe {
   red: BlobKeyframe
   blue: BlobKeyframe
+  purple: BlobKeyframe
 }
 
 export interface HeroSceneKeyframe {
@@ -28,7 +29,7 @@ export interface HeroSceneKeyframe {
   /** 0 = assembled, 1 = fully blown up along vertical axis. */
   blowUp: number
   /** CSS color blob positions for this scroll stop. */
-  blobs?: BlobPairKeyframe
+  blobs?: BlobSetKeyframe
 }
 
 export interface HeroSceneIntroConfig {
@@ -38,6 +39,10 @@ export interface HeroSceneIntroConfig {
   blowUpStart: number
   /** CSS blur in px at load; eases to 0 with the intro. */
   blurStart?: number
+  /** Seconds before color blobs begin fading in. */
+  blobAppearDelay?: number
+  /** Seconds for the blob fade-in after the delay. */
+  blobAppearDuration?: number
 }
 
 export interface HeroSceneModelOffset {
@@ -70,4 +75,5 @@ export interface HeroScenePose {
 export interface HeroBlobPose {
   red: BlobKeyframe
   blue: BlobKeyframe
+  purple: BlobKeyframe
 }

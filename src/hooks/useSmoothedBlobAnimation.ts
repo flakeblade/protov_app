@@ -17,6 +17,7 @@ const CATALYZE_KEYFRAME =
 const INTRO_START_BLOBS: HeroBlobPose = {
   red: { x: 0.5, y: 0.18, scale: 1.35 },
   blue: { x: 0.9, y: 0.78, scale: 1.3 },
+  purple: { x: 0.06, y: 0.1, scale: 1.4 },
 }
 
 function applyBlobElement(
@@ -55,6 +56,9 @@ interface BlobElementRefs {
   blueCore: RefObject<HTMLElement | null>
   blueTrail1: RefObject<HTMLElement | null>
   blueTrail2: RefObject<HTMLElement | null>
+  purpleCore: RefObject<HTMLElement | null>
+  purpleTrail1: RefObject<HTMLElement | null>
+  purpleTrail2: RefObject<HTMLElement | null>
 }
 
 export function useSmoothedBlobAnimation(scrollProgress: number, refs: BlobElementRefs) {
@@ -109,19 +113,14 @@ export function useSmoothedBlobAnimation(scrollProgress: number, refs: BlobEleme
         trail1.current.blue,
         trail2.current.blue,
       )
-
-      const layer = refs.layer.current
-      if (layer) {
-        const midX = (smoothed.current.red.x + smoothed.current.blue.x) / 2
-        const midY = (smoothed.current.red.y + smoothed.current.blue.y) / 2
-        const spread = Math.hypot(
-          smoothed.current.red.x - smoothed.current.blue.x,
-          smoothed.current.red.y - smoothed.current.blue.y,
-        )
-        layer.style.setProperty('--purple-x', `${midX * 100}%`)
-        layer.style.setProperty('--purple-y', `${midY * 100}%`)
-        layer.style.setProperty('--purple-size', `${(0.35 + (1 - spread) * 0.45) * 100}vmin`)
-      }
+      applyBlobTransforms(
+        refs.purpleCore.current,
+        refs.purpleTrail1.current,
+        refs.purpleTrail2.current,
+        smoothed.current.purple,
+        trail1.current.purple,
+        trail2.current.purple,
+      )
 
       frame = requestAnimationFrame(tick)
     }
@@ -136,5 +135,8 @@ export function useSmoothedBlobAnimation(scrollProgress: number, refs: BlobEleme
     refs.blueCore,
     refs.blueTrail1,
     refs.blueTrail2,
+    refs.purpleCore,
+    refs.purpleTrail1,
+    refs.purpleTrail2,
   ])
 }

@@ -1,6 +1,6 @@
 import type {
   BlobKeyframe,
-  BlobPairKeyframe,
+  BlobSetKeyframe,
   HeroBlobPose,
   HeroSceneKeyframe,
   HeroSceneKeyframeConfig,
@@ -32,10 +32,11 @@ function lerpBlob(a: BlobKeyframe, b: BlobKeyframe, t: number): BlobKeyframe {
   }
 }
 
-function lerpBlobPair(a: BlobPairKeyframe, b: BlobPairKeyframe, t: number): HeroBlobPose {
+function lerpBlobSet(a: BlobSetKeyframe, b: BlobSetKeyframe, t: number): HeroBlobPose {
   return {
     red: lerpBlob(a.red, b.red, t),
     blue: lerpBlob(a.blue, b.blue, t),
+    purple: lerpBlob(a.purple, b.purple, t),
   }
 }
 
@@ -48,17 +49,18 @@ function lerpKeyframe(a: HeroSceneKeyframe, b: HeroSceneKeyframe, t: number): He
   }
 }
 
-function blobPairFromKeyframe(keyframe: HeroSceneKeyframe): BlobPairKeyframe {
+function blobSetFromKeyframe(keyframe: HeroSceneKeyframe): BlobSetKeyframe {
   return (
     keyframe.blobs ?? {
       red: { x: 0.65, y: 0.35, scale: 1 },
       blue: { x: 0.75, y: 0.55, scale: 1 },
+      purple: { x: 0.22, y: 0.45, scale: 1 },
     }
   )
 }
 
 function lerpKeyframeBlobs(a: HeroSceneKeyframe, b: HeroSceneKeyframe, t: number): HeroBlobPose {
-  return lerpBlobPair(blobPairFromKeyframe(a), blobPairFromKeyframe(b), t)
+  return lerpBlobSet(blobSetFromKeyframe(a), blobSetFromKeyframe(b), t)
 }
 
 /** Map raw scroll progress to a pose by interpolating between adjacent keyframes. */
@@ -97,10 +99,11 @@ export function poseFromKeyframe(keyframe: HeroSceneKeyframe): HeroScenePose {
 }
 
 export function blobsFromKeyframe(keyframe: HeroSceneKeyframe): HeroBlobPose {
-  const pair = blobPairFromKeyframe(keyframe)
+  const set = blobSetFromKeyframe(keyframe)
   return {
-    red: { ...pair.red },
-    blue: { ...pair.blue },
+    red: { ...set.red },
+    blue: { ...set.blue },
+    purple: { ...set.purple },
   }
 }
 
@@ -140,6 +143,7 @@ export function introBlobsAtElapsed(
   return {
     red: lerpBlob(start.red, end.red, t),
     blue: lerpBlob(start.blue, end.blue, t),
+    purple: lerpBlob(start.purple, end.purple, t),
   }
 }
 
@@ -165,6 +169,7 @@ export function dampBlobs(
   return {
     red: dampBlob(current.red, target.red, lambda, delta),
     blue: dampBlob(current.blue, target.blue, lambda, delta),
+    purple: dampBlob(current.purple, target.purple, lambda, delta),
   }
 }
 

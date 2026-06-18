@@ -7,6 +7,7 @@ import { HeroRotatingText } from '../components/home/HeroRotatingText'
 import { HeroScrollPanel } from '../components/home/HeroScrollPanel'
 import { HomeFooter } from '../components/home/HomeFooter'
 import { HeroColorBlobs } from '../components/home/HeroColorBlobs'
+import { HeroScrollHint } from '../components/home/HeroScrollHint'
 import { preloadHeroGlb } from '../scene/preloadHero'
 // import { HeroSceneFallback } from '../components/home/HeroSceneFallback'
 import { useScrollStageProgress } from '../hooks/useHeroScrollProgress'
@@ -69,6 +70,7 @@ export default function HomePage() {
       </div>
 
       <HomeFooter />
+      <HeroScrollHint scrollProgress={scrollProgress} />
     </div>
   )
 }

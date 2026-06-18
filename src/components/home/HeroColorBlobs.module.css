@@ -4,10 +4,24 @@
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  opacity: 0;
+  animation: blobLayerReveal var(--blob-appear-duration, 1.4s) ease-out
+    var(--blob-appear-delay, 0.7s) forwards;
+}
+
+@keyframes blobLayerReveal {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .redGroup,
-.blueGroup {
+.blueGroup,
+.purpleGroup {
   position: absolute;
   inset: 0;
   mix-blend-mode: light-dark(normal, screen);
@@ -67,39 +81,19 @@
     );
 }
 
-/* Soft purple where the two fields overlap — additive haze, not a third object. */
-.purpleHaze {
-  position: absolute;
-  left: var(--purple-x, 62%);
-  top: var(--purple-y, 42%);
-  width: var(--purple-size, 52vmin);
-  height: var(--purple-size, 52vmin);
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(110px);
-  opacity: light-dark(0.08, 0.14);
-  mix-blend-mode: light-dark(normal, screen);
-  background: radial-gradient(
-    circle,
-    rgba(180, 90, 220, 0.45) 0%,
-    rgba(140, 70, 200, 0.18) 40%,
-    rgba(100, 50, 180, 0) 72%
-  );
-  animation: purplePulse 14s ease-in-out infinite;
-}
-
-@keyframes purplePulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(0.92);
-    opacity: light-dark(0.06, 0.11);
-  }
-
-  50% {
-    transform: translate(-48%, -46%) scale(1.08);
-    opacity: light-dark(0.1, 0.17);
-  }
+.purple {
+  background:
+    radial-gradient(
+      circle at 40% 38%,
+      rgba(200, 120, 255, 0.5) 0%,
+      rgba(160, 80, 230, 0.2) 34%,
+      rgba(120, 50, 200, 0) 72%
+    ),
+    radial-gradient(
+      circle at 60% 60%,
+      rgba(170, 100, 240, 0.32) 0%,
+      rgba(130, 60, 210, 0) 68%
+    );
 }
 
 .core.red {
@@ -108,6 +102,10 @@
 
 .core.blue {
   animation: blueDrift 22s ease-in-out infinite;
+}
+
+.core.purple {
+  animation: purpleDrift 20s ease-in-out infinite;
 }
 
 @keyframes redDrift {
@@ -132,9 +130,13 @@
   }
 }
 
-@media (max-width: 48em) {
-  .purpleHaze {
-    width: min(var(--purple-size, 52vmin), 70vmin);
-    height: min(var(--purple-size, 52vmin), 70vmin);
+@keyframes purpleDrift {
+  0%,
+  100% {
+    filter: blur(72px);
+  }
+
+  50% {
+    filter: blur(82px);
   }
 }
