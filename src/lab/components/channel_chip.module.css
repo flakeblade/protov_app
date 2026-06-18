@@ -1,0 +1,4 @@
+.reading {
+  font-family: var(--mantine-font-family-monospace);
+  font-variant-numeric: tabular-nums;
+}

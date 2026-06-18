@@ -1,6 +1,8 @@
 import { Chip, NumberFormatter } from '@mantine/core'
 import { useState } from 'react'
 
+import classes from './channel_chip.module.css'
+
 export interface Channel {
   identifier: string
   color: string
@@ -24,10 +26,12 @@ export function ChannelChip({ channel }: ChannelChipProps) {
       variant="outline"
     >
       {`CH${channel.identifier} - `}
-      <NumberFormatter value={channel.voltage} decimalScale={3} />
-      {'V @ '}
-      <NumberFormatter value={channel.current} decimalScale={3} />
-      {'A'}
+      <span className={classes.reading}>
+        <NumberFormatter value={channel.voltage} decimalScale={3} fixedDecimalScale />
+        {' V @ '}
+        <NumberFormatter value={channel.current} decimalScale={3} fixedDecimalScale />
+        {' A'}
+      </span>
     </Chip>
   )
 }

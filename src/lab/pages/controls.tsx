@@ -20,6 +20,16 @@ import { IconBolt } from '@tabler/icons-react'
 import classes from './controls.module.css'
 import type { Channel } from '../components/channel_chip'
 
+const VOLTAGE_MAX = 20
+const CURRENT_MAX = 5
+const DECIMALS = 3
+
+type RegulationMode = 'CV' | 'CC'
+
+interface ChannelCardData extends Channel {
+  regulationMode?: RegulationMode
+}
+
 export function ControlsPage() {
   return (
     <Container>
@@ -32,9 +42,10 @@ export function ControlsPage() {
           <ChannelCard
             identifier="A"
             color="red"
-            voltage={3.3}
+            voltage={20.3}
             current={0.5}
             active={true}
+            regulationMode="CV"
           />
         </Skeleton>
 
@@ -45,6 +56,7 @@ export function ControlsPage() {
             voltage={1.8}
             current={0.1}
             active={true}
+            regulationMode="CC"
           />
         </Skeleton>
 
@@ -55,6 +67,7 @@ export function ControlsPage() {
             voltage={1.8}
             current={0.1}
             active={true}
+            regulationMode="CV"
           />
         </Skeleton>
 
@@ -65,6 +78,7 @@ export function ControlsPage() {
             voltage={1.8}
             current={0.1}
             active={true}
+            regulationMode="CC"
           />
         </Skeleton>
 
@@ -75,62 +89,119 @@ export function ControlsPage() {
   )
 }
 
-interface NumberSettingProps {
-  placeholder: string
+interface ReadingValueProps {
+  value: number
+  unit: string
+}
+
+function ReadingValue({ value, unit }: ReadingValueProps) {
+  const offset = 10 ** -(DECIMALS + 1)
+
+  return (
+    <Paper className={classes.readingBox} withBorder radius="sm">
+      <span className={classes.readingValue}>
+        <NumberFormatter
+          value={value + offset}
+          decimalScale={DECIMALS}
+          fixedDecimalScale
+        />
+      </span>
+      <span className={classes.readingUnit}>{unit}</span>
+    </Paper>
+  )
+}
+
+interface LimitFieldProps {
+  label: string
   unit: string
   min: number
   max: number
-  decimals: number
+  placeholder: string
+  tooltip: string
 }
 
-function NumberSetting({
-  placeholder,
+function LimitField({ label, unit, min, max, placeholder, tooltip }: LimitFieldProps) {
+  return (
+    <Tooltip label={tooltip}>
+      <div className={classes.limitField}>
+        <Text className={classes.limitLabel}>{label}</Text>
+        <NumberInput
+          className={classes.limitInput}
+          classNames={{ input: classes.limitInputField }}
+          placeholder={placeholder}
+          suffix={unit}
+          decimalScale={DECIMALS}
+          fixedDecimalScale
+          min={min}
+          max={max}
+          size="xs"
+        />
+      </div>
+    </Tooltip>
+  )
+}
+
+interface ParameterRowProps {
+  label: string
+  value: number
+  unit: string
+  min: number
+  max: number
+  setTooltip: string
+  protectionLabel: 'OVP' | 'OCP'
+  protectionTooltip: string
+}
+
+function ParameterRow({
+  label,
+  value,
   unit,
   min,
   max,
-  decimals,
-}: NumberSettingProps) {
+  setTooltip,
+  protectionLabel,
+  protectionTooltip,
+}: ParameterRowProps) {
+  const placeholder = `0.${'0'.repeat(DECIMALS)}–${max}.${'0'.repeat(DECIMALS)}`
+
   return (
-    <NumberInput
-      placeholder={placeholder}
-      leftSection={unit}
-      decimalScale={decimals}
-      fixedDecimalScale
-      min={min}
-      max={max}
-      mt="xs"
-    />
+    <div className={classes.parameterRow}>
+      <Text className={classes.rowLabel}>{label}</Text>
+      <ReadingValue value={value} unit={unit} />
+      <div className={classes.limitStack}>
+        <LimitField
+          label="SET"
+          unit={unit}
+          min={min}
+          max={max}
+          placeholder={placeholder}
+          tooltip={setTooltip}
+        />
+        <LimitField
+          label={protectionLabel}
+          unit={unit}
+          min={min}
+          max={max}
+          placeholder={placeholder}
+          tooltip={protectionTooltip}
+        />
+      </div>
+    </div>
   )
 }
 
-interface ReadingProps {
-  title: string
-  value: number
-  decimals: number
-  unit: string
+const REGULATION_TOOLTIPS: Record<RegulationMode, string> = {
+  CV: 'Constant voltage — output holds target voltage',
+  CC: 'Constant current — output holds target current',
 }
 
-function Reading({ title, value, decimals, unit }: ReadingProps) {
-  const offset = 10 ** -(decimals + 1)
-
-  return (
-    <Stack>
-      <Text>{title}</Text>
-      <Paper>
-        <Group justify="space-between">
-          <Text className={classes.readings}>
-            <NumberFormatter value={value + offset} decimalScale={decimals} />
-          </Text>
-          <Text className={classes.unit} mr="xs">
-            {unit}
-          </Text>
-        </Group>
-      </Paper>
-    </Stack>
-  )
-}
-
-function ChannelCard({ identifier, color, voltage, current }: Channel) {
+function ChannelCard({
+  identifier,
+  color,
+  voltage,
+  current,
+  regulationMode = 'CV',
+}: ChannelCardData) {
   const theme = useMantineTheme()
   const borderColor = theme.colors[color as MantineColor][5]
 
@@ -152,40 +223,49 @@ function ChannelCard({ identifier, color, voltage, current }: Channel) {
           {`Channel ${identifier}`}
         </Badge>
 
-        <Switch
-          size="md"
-          color={color}
-          onLabel={<IconBolt size={16} stroke={2.5} />}
+        <Group gap="sm">
+          <Tooltip label={REGULATION_TOOLTIPS[regulationMode]}>
+            <Text component="span" className={classes.modeTag}>
+              {regulationMode}
+            </Text>
+          </Tooltip>
+
+          <Switch
+            size="md"
+            color={color}
+            onLabel={<IconBolt size={16} stroke={2.5} />}
+          />
+        </Group>
+      </Group>
+
+      <Stack gap="xs">
+        <ParameterRow
+          label="Voltage"
+          value={voltage}
+          unit="V"
+          min={0}
+          max={VOLTAGE_MAX}
+          setTooltip="Target voltage on output"
+          protectionLabel="OVP"
+          protectionTooltip="Over-voltage protection limit"
         />
-      </Group>
 
-      <Group grow>
-        <Reading title="Voltage" value={voltage} decimals={3} unit="V" />
-        <Reading title="Current" value={current} decimals={3} unit="A" />
-        <Reading title="Power" value={voltage * current} decimals={3} unit="W" />
-      </Group>
+        <ParameterRow
+          label="Current"
+          value={current}
+          unit="A"
+          min={0}
+          max={CURRENT_MAX}
+          setTooltip="Target current on output"
+          protectionLabel="OCP"
+          protectionTooltip="Over-current protection limit"
+        />
 
-      <Tooltip label="Target voltage and current on output">
-        <Text mt="md" className={classes.label} c="dimmed">
-          SETPOINT
-        </Text>
-      </Tooltip>
-
-      <Group grow>
-        <NumberSetting placeholder="0.000 - 20.000" unit="V" min={0} max={20} decimals={3} />
-        <NumberSetting placeholder="0.000 - 5.000" unit="A" min={0} max={5} decimals={3} />
-      </Group>
-
-      <Tooltip label="Absolute maximum voltage and current before safety shutdown">
-        <Text mt="md" className={classes.label} c="dimmed">
-          PROTECTION
-        </Text>
-      </Tooltip>
-
-      <Group grow>
-        <NumberSetting placeholder="0.000 - 20.000" unit="V" min={0} max={20} decimals={3} />
-        <NumberSetting placeholder="0.000 - 5.000" unit="A" min={0} max={5} decimals={3} />
-      </Group>
+        <div className={classes.powerRow}>
+          <Text className={classes.rowLabel}>Power</Text>
+          <ReadingValue value={voltage * current} unit="W" />
+        </div>
+      </Stack>
     </Card>
   )
 }

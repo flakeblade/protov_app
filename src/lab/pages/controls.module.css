@@ -1,22 +1,90 @@
-.section {
-  border-top: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
-  padding-left: var(--mantine-spacing-lg);
-  padding-right: var(--mantine-spacing-md);
+.parameterRow,
+.powerRow {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--mantine-spacing-sm);
+  align-items: stretch;
 }
 
-.label {
-  text-transform: uppercase;
+.rowLabel {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  align-self: center;
+}
+
+.modeTag {
   font-size: var(--mantine-font-size-xs);
-  font-weight: 700;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--mantine-color-dimmed);
+  padding: 0.15rem 0.45rem;
+  border: 1px solid light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-4));
+  border-radius: var(--mantine-radius-sm);
+  line-height: 1.2;
 }
 
-.readings {
-  font-size: 30px;
-  font-weight: 300;
-  padding-left: var(--mantine-spacing-xs);
-  font-family: Outfit, var(--mantine-font-family);
+.readingBox {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  min-height: 4rem;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
 }
 
-.unit {
-  opacity: 0.5;
+.readingValue,
+.readingUnit,
+.limitInputField {
+  font-variant-numeric: tabular-nums;
+}
+
+.readingValue {
+  font-size: clamp(1.75rem, 2.8vw, 2.0rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.readingUnit {
+  font-size: clamp(0.85rem, 1.3vw, 1rem);
+  font-weight: 400;
+  color: var(--mantine-color-dimmed);
+  line-height: 1;
+}
+
+.limitStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  min-height: 4rem;
+}
+
+.limitField {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2.1rem minmax(0, 1fr);
+  gap: 0.3rem;
+  align-items: center;
+  min-height: 0;
+}
+
+.limitLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--mantine-color-dimmed);
+  text-align: right;
+}
+
+.limitInput {
+  width: 100%;
+  height: 100%;
+}
+
+.limitInputField {
+  text-align: right;
+  min-height: 1.75rem;
+  height: 100%;
+  font-weight: 400;
 }
