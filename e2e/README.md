@@ -12,7 +12,7 @@ e2e/
   tests/
     navigation/           # Navigation specs by area
 playwright.config.ts
-mock-device/              # Future WebSerial mock (see mock-device/README.md)
+mock-device/              # SCPI mock power supply (see mock-device/README.md)
 ```
 
 ## Commands
@@ -28,4 +28,4 @@ npm run test:e2e:report   # Open HTML report after a run
 - Put specs in `e2e/tests/<area>/`.
 - Reuse `test` and `expect` from `e2e/fixtures/test-base.ts`.
 - Add page interactions to `e2e/pages/` rather than duplicating selectors in specs.
-- Device/WebSerial tests should use a fixture from `mock-device/` once implemented.
+- Device/WebSerial tests should use the `mockDevice` fixture from `e2e/fixtures/mock-device.ts`.
