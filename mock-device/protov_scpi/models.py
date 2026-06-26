@@ -21,22 +21,31 @@ class ChannelState:
     ocp: float = 1.0
     output_on: bool = False
     prot_latched: bool = False
+    color: str = "RED"
+    load_ratio: float = 0.85
+    voltage_droop: float | None = None
     measured: MeasuredValues = field(default_factory=MeasuredValues)
 
-    def measured_voltage(self) -> float:
-        if self.measured.voltage is not None:
-            return self.measured.voltage
-        return self.voltage_set if self.output_on else 0.0
+    def measured_voltage(self, channel_id: str = "CH1") -> float:
+        if not self.output_on:
+            return 0.0
+        from .simulation import simulated_voltage
 
-    def measured_current(self) -> float:
-        if self.measured.current is not None:
-            return self.measured.current
-        return self.current_set if self.output_on else 0.0
+        return simulated_voltage(channel_id, self)
 
-    def measured_power(self) -> float:
-        if self.measured.power is not None:
-            return self.measured.power
-        return self.measured_voltage() * self.measured_current()
+    def measured_current(self, channel_id: str = "CH1") -> float:
+        if not self.output_on:
+            return 0.0
+        from .simulation import simulated_current
+
+        return simulated_current(channel_id, self)
+
+    def measured_power(self, channel_id: str = "CH1") -> float:
+        if not self.output_on:
+            return 0.0
+        from .simulation import simulated_power
+
+        return simulated_power(channel_id, self)
 
 
 @dataclass
@@ -45,6 +54,7 @@ class DeviceState:
     model: str = "ProtoV-MINI"
     serial: str = "550e8400"
     fw_version: str = "1.0.0"
+    hw_version: str = "A.1"
     remote: bool = True
     channels: dict[str, ChannelState] = field(
         default_factory=lambda: {
@@ -54,6 +64,7 @@ class DeviceState:
                 ovp=18.0,
                 ocp=1.0,
                 output_on=False,
+                color="RED",
             ),
             "CH2": ChannelState(
                 voltage_set=5.0,
@@ -61,6 +72,7 @@ class DeviceState:
                 ovp=6.0,
                 ocp=3.0,
                 output_on=False,
+                color="BLUE",
             ),
         }
     )
@@ -76,6 +88,7 @@ class DeviceState:
                 ovp=18.0,
                 ocp=1.0,
                 output_on=False,
+                color="RED",
             ),
             "CH2": ChannelState(
                 voltage_set=5.0,
@@ -83,6 +96,7 @@ class DeviceState:
                 ovp=6.0,
                 ocp=3.0,
                 output_on=False,
+                color="BLUE",
             ),
         }
         self.error_queue.clear()
@@ -104,6 +118,9 @@ class DeviceState:
                 ocp=state.ocp,
                 output_on=state.output_on,
                 prot_latched=state.prot_latched,
+                color=state.color,
+                load_ratio=state.load_ratio,
+                voltage_droop=state.voltage_droop,
                 measured=MeasuredValues(
                     voltage=state.measured.voltage,
                     current=state.measured.current,

@@ -4,6 +4,8 @@ __pycache__/
 .pytest_cache/
 .protov-mock.port
 .protov-mock.ctrl
+.protov-mock.client
+.protov-mock.bridge
 *.egg-info/
 dist/
 build/

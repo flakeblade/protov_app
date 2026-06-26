@@ -9,14 +9,14 @@ from .server import run_server
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="ProtoV MINI mock power supply (SCPI over serial)"
+        description="ProtoV MINI mock power supply (SCPI over serial and/or WebSocket)"
     )
     parser.add_argument(
         "--port",
         default="auto",
         help=(
-            "Serial port path, or 'auto' to create a PTY pair. "
-            "Use the peer path from scripts/create_port.sh for a stable symlink."
+            "Serial port path, 'auto' for PTY, or 'none' to skip serial "
+            "(use with --web-bridge for browser-only dev)."
         ),
     )
     parser.add_argument("--baudrate", type=int, default=115200)
@@ -37,6 +37,13 @@ def main() -> None:
         default=Path(".protov-mock.ctrl"),
         help="Unix socket for Playwright/CI control commands",
     )
+    parser.add_argument(
+        "--web-bridge",
+        action="store_true",
+        help="Expose a WebSocket SCPI bridge for browser dev (ws://127.0.0.1:8765)",
+    )
+    parser.add_argument("--web-bridge-host", default="127.0.0.1")
+    parser.add_argument("--web-bridge-port", type=int, default=8765)
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -51,6 +58,9 @@ def main() -> None:
         state_file=args.state,
         port_file=args.port_file,
         control_socket=args.control_socket,
+        web_bridge=args.web_bridge,
+        web_bridge_host=args.web_bridge_host,
+        web_bridge_port=args.web_bridge_port,
     )
 
 

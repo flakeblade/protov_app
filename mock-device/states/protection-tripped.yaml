@@ -2,6 +2,7 @@
 idn:
   serial: "deadbeef"
   fw_version: "0.9.0"
+  hw_version: "A.0"
 remote: true
 error_queue:
   - [-221, "Settings conflict"]

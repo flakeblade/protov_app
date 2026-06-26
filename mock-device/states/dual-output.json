@@ -1,7 +1,8 @@
 {
   "idn": {
     "serial": "32983fe4",
-    "fw_version": "1.0.0"
+    "fw_version": "1.0.0",
+    "hw_version": "B.2"
   },
   "remote": true,
   "channels": {

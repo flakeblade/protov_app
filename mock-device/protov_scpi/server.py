@@ -9,8 +9,10 @@ from pathlib import Path
 
 import serial
 
+from .bridge import WebBridgeServer
 from .control import ControlServer, resolve_port_path
 from .device import ScpiDevice
+from .device_pool import DevicePool
 from .models import DeviceState
 from .state_loader import load_state_file
 
@@ -92,8 +94,7 @@ class SerialScpiServer:
             try:
                 chunk = os.read(master_fd, 256)
             except OSError as exc:
-                # Master read returns EIO until a client opens the slave side.
-                if exc.errno in (5, 6):  # EIO, ENXIO
+                if exc.errno in (5, 6):
                     continue
                 logger.exception("PTY read failed")
                 break
@@ -161,27 +162,65 @@ def run_server(
     state_file: Path | None = None,
     port_file: Path | None = None,
     control_socket: Path | None = None,
+    web_bridge: bool = False,
+    web_bridge_host: str = "127.0.0.1",
+    web_bridge_port: int = 8765,
 ) -> None:
     port_file = port_file or Path.cwd() / ".protov-mock.port"
     control_socket = control_socket or Path.cwd() / ".protov-mock.ctrl"
+    bridge_file = Path.cwd() / ".protov-mock.bridge"
 
     initial_state = load_state_file(state_file) if state_file else DeviceState()
+    pool = DevicePool() if web_bridge else None
     device = ScpiDevice(initial_state)
-    resolved_port, client_port = resolve_port_path(port, port_file)
 
-    server = SerialScpiServer(
-        resolved_port,
-        device,
-        baudrate=baudrate,
-        control_socket=control_socket,
+    bridge: WebBridgeServer | None = None
+    if web_bridge:
+        assert pool is not None
+        bridge = WebBridgeServer(pool, host=web_bridge_host, port=web_bridge_port)
+        bridge.start()
+        bridge_url = f"ws://{web_bridge_host}:{web_bridge_port}"
+        bridge_file.write_text(bridge_url + "\n", encoding="utf-8")
+        logger.info("Browser dev bridge: %s", bridge_url)
+
+    control = ControlServer(
+        control_socket,
+        get_device=lambda: device,
+        reload_state=lambda state: setattr(device, "state", state),
     )
-
-    logger.info("Connect pyvisa/WebSerial to: %s", client_port)
+    control.start()
     logger.info("Control socket: %s", control_socket)
 
+    serial_server: SerialScpiServer | None = None
+    serial_thread: threading.Thread | None = None
+
+    if port != "none":
+        resolved_port, client_port = resolve_port_path(port, port_file)
+        serial_server = SerialScpiServer(
+            resolved_port,
+            device,
+            baudrate=baudrate,
+            control_socket=None,
+        )
+        logger.info("Serial client port: %s", client_port)
+        serial_thread = threading.Thread(target=serial_server.start, daemon=True, name="protov-serial")
+        serial_thread.start()
+    elif not web_bridge:
+        logger.warning("No serial port and no web bridge — nothing to serve SCPI on")
+
+    if web_bridge:
+        logger.info("Dev: click Connect in the web app (uses the WebSocket bridge automatically)")
+
     try:
-        server.start()
+        while True:
+            time.sleep(1)
     except KeyboardInterrupt:
         logger.info("Shutting down")
     finally:
-        server.stop()
+        control.stop()
+        if bridge is not None:
+            bridge.stop()
+        if serial_server is not None:
+            serial_server.stop()
+        if bridge_file.exists():
+            bridge_file.unlink()

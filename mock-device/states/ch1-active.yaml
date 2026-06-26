@@ -2,6 +2,7 @@
 idn:
   serial: "550e8400"
   fw_version: "1.2.3"
+  hw_version: "A.1"
 remote: true
 channels:
   CH1:

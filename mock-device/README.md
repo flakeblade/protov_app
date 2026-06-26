@@ -28,24 +28,48 @@ inst = rm.open_resource(f"ASRL{port}::INSTR", read_termination="\n", write_termi
 print(inst.query("*IDN?"))
 ```
 
-## Stable port for WebSerial (Linux)
+## WebSocket bridge (browser dev)
 
-WebSerial and browser tests benefit from a **fixed symlink** rather than a random `/dev/pts/N`:
+Browsers often cannot see socat/virtual serial ports in the WebSerial picker. The mock device therefore includes a **built-in WebSocket SCPI bridge** — one process, up to **four simultaneous browser connections**:
 
 ```bash
-# Terminal 1 — create PTY pair (requires socat)
+# From repo root
+npm run dev:mock
+
+# Equivalent
+cd mock-device && ./scripts/run.sh --state states/ch1-active.yaml
+```
+
+This starts:
+
+- **Four pooled mock devices** with distinct serial numbers (`550e8400`, `32983fe4`, `deadbeef`, `a1b2c3d4`)
+- **WebSocket bridge** at `ws://127.0.0.1:8765` (written to `.protov-mock.bridge`) — each Connect click in the web app acquires one slot
+- Control socket at `.protov-mock.ctrl` (Playwright / CI)
+
+In Vite dev mode the web app connects through the bridge automatically when you click **Connect** — no serial port picker. Click Connect up to four times to attach all mock devices; disconnecting releases a slot back to the pool.
+
+For **pyvisa** / serial testing, run with a PTY instead:
+
+```bash
+PROTOV_MOCK_WEB_BRIDGE=0 PROTOV_MOCK_SERVER_PORT=auto ./scripts/run.sh
+```
+
+## Stable port for pyvisa (optional)
+
+For a fixed symlink rather than a random `/dev/pts/N`:
+
+```bash
+# Terminal 1
 ./scripts/create_port.sh
 
-# Terminal 2 — run mock on server side
-PROTOV_MOCK_SERVER_PORT=/tmp/protov-mini-peer ./scripts/run.sh --state states/default.yaml
+# Terminal 2
+PROTOV_MOCK_WEB_BRIDGE=0 PROTOV_MOCK_SERVER_PORT=/tmp/protov-mini-peer ./scripts/run.sh
 ```
 
 | Path | Role |
 |------|------|
-| `/tmp/protov-mini` | Client — Chrome WebSerial, pyvisa, lab app |
-| `/tmp/protov-mini-peer` | Server — mock SCPI process |
-
-Grant access if needed: `sudo chmod 666 /tmp/protov-mini`
+| `/tmp/protov-mini` | pyvisa client |
+| `/tmp/protov-mini-peer` | Mock SCPI server |
 
 ## SCPI commands
 
@@ -54,10 +78,17 @@ Grant access if needed: `sudo chmod 666 /tmp/protov-mini`
 | Common | `*IDN?`, `*RST`, `*SAV <1-9>`, `*RCL <1-9>`, `*DEL <1-9>` |
 | Measure | `MEAS:CURR? CHn`, `MEAS:VOLT? CHn`, `MEAS:POW? CHn` |
 | Setpoints | `CHn:VOLT`, `CHn:CURR`, `CHn:OVP`, `CHn:OCP` (+ `?` queries) |
+| Appearance | `CHn:COLR <name>`, `CHn:COLR?` — colors: `RED`, `BLUE`, `YELLOW`, `GREEN`, `ORANGE`, `TEAL`, `VIOLET`, `PINK`, `CYAN`, `LIME`, `GRAY` (default CH1=`RED`, CH2=`BLUE`) |
 | Output | `OUTP CHn,ON\|OFF`, `OUTP? CHn`, `OUTP:RESET:PROT [CHn]` |
 | System | `SYST:ERR?`, `SYST:VERS?`, `SYST:LOC`, `SYST:REM` |
 
 Responses use three decimal places for V/A/W (e.g. `3.300`, `0.243`).
+
+`*IDN?` returns:
+
+```
+Flake-Blade,ProtoV-MINI,<serial>,<fw_version>,<hw_version>
+```
 
 ## Preset states (JSON / YAML)
 
@@ -107,7 +138,19 @@ The fixture:
 2. Exposes `clientPort` for future WebSerial wiring in the lab app
 3. Provides `loadState()` / `status()` over the control socket
 
-When the web app gains real WebSerial support, point it at `mockDevice.clientPort` (or `/tmp/protov-mini` with `create_port.sh`).
+The fixture starts the mock SCPI server for Playwright control-socket tests. For WebSerial UI testing, run `npm run dev:mock` and use the browser port picker.
+
+### Web app (dev)
+
+```bash
+# Terminal 1
+npm run dev:mock
+
+# Terminal 2
+npm run dev
+```
+
+Open `/lab/devices` and click **Connect** up to four times. Dev mode uses the mock device's WebSocket bridge (`ws://127.0.0.1:8765`) automatically. Each connection receives a distinct serial number. Channel colors are assigned in add order (red/blue first, then yellow/green, orange/teal, violet/pink) and stay with that serial while connected. Disconnecting frees that color pair for the next device to connect; remaining devices keep their colors.
 
 ## Python tests
 

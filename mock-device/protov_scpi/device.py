@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass
 
+from .colors import normalize_color_name
 from .models import ChannelState, DeviceState
 from .state_loader import normalize_command, parse_channel_token
 
@@ -22,23 +24,25 @@ class ScpiDevice:
 
     def __init__(self, state: DeviceState | None = None) -> None:
         self.state = state or DeviceState()
+        self._lock = threading.Lock()
 
     def handle(self, raw_command: str) -> CommandResult:
-        command = normalize_command(raw_command)
-        if not command:
-            return CommandResult()
+        with self._lock:
+            command = normalize_command(raw_command)
+            if not command:
+                return CommandResult()
 
-        try:
-            return self._dispatch(command)
-        except ValueError as exc:
-            self.state.push_error(-221, "Settings conflict")
-            return CommandResult(error=(-221, str(exc)))
+            try:
+                return self._dispatch(command)
+            except ValueError as exc:
+                self.state.push_error(-221, "Settings conflict")
+                return CommandResult(error=(-221, str(exc)))
 
     def _dispatch(self, command: str) -> CommandResult:
         if command == "*IDN?":
             s = self.state
             return CommandResult(
-                response=f"{s.manufacturer},{s.model},{s.serial},{s.fw_version}"
+                response=f"{s.manufacturer},{s.model},{s.serial},{s.fw_version},{s.hw_version}"
             )
 
         if command == "*RST":
@@ -78,10 +82,31 @@ class ScpiDevice:
             meas_type, channel = meas_match.groups()
             ch_state = self._channel(channel)
             if meas_type == "CURR":
-                return CommandResult(response=self.CURR_FMT.format(ch_state.measured_current()))
+                return CommandResult(response=self.CURR_FMT.format(ch_state.measured_current(channel)))
             if meas_type == "VOLT":
-                return CommandResult(response=self.VOLT_FMT.format(ch_state.measured_voltage()))
-            return CommandResult(response=self.POW_FMT.format(ch_state.measured_power()))
+                return CommandResult(response=self.VOLT_FMT.format(ch_state.measured_voltage(channel)))
+            return CommandResult(response=self.POW_FMT.format(ch_state.measured_power(channel)))
+
+        query_match = re.fullmatch(r"(CH[12]):(VOLT|CURR|OVP|OCP|COLR)\?", command)
+        if query_match:
+            channel, param = query_match.groups()
+            ch_state = self._channel(channel)
+            if param == "VOLT":
+                return CommandResult(response=self.VOLT_FMT.format(ch_state.voltage_set))
+            if param == "CURR":
+                return CommandResult(response=self.CURR_FMT.format(ch_state.current_set))
+            if param == "OVP":
+                return CommandResult(response=self.VOLT_FMT.format(ch_state.ovp))
+            if param == "OCP":
+                return CommandResult(response=self.CURR_FMT.format(ch_state.ocp))
+            return CommandResult(response=ch_state.color)
+
+        color_match = re.fullmatch(r"(CH[12]):COLR ([A-Z]+)", command)
+        if color_match:
+            channel, color_name = color_match.groups()
+            ch_state = self._channel(channel)
+            ch_state.color = normalize_color_name(color_name)
+            return CommandResult()
 
         set_match = re.fullmatch(r"(CH[12]):(VOLT|CURR|OVP|OCP) ([-+]?\d*\.?\d+)", command)
         if set_match:
@@ -97,18 +122,6 @@ class ScpiDevice:
             else:
                 ch_state.ocp = value
             return CommandResult()
-
-        query_match = re.fullmatch(r"(CH[12]):(VOLT|CURR|OVP|OCP)\?", command)
-        if query_match:
-            channel, param = query_match.groups()
-            ch_state = self._channel(channel)
-            if param == "VOLT":
-                return CommandResult(response=self.VOLT_FMT.format(ch_state.voltage_set))
-            if param == "CURR":
-                return CommandResult(response=self.CURR_FMT.format(ch_state.current_set))
-            if param == "OVP":
-                return CommandResult(response=self.VOLT_FMT.format(ch_state.ovp))
-            return CommandResult(response=self.CURR_FMT.format(ch_state.ocp))
 
         outp_match = re.fullmatch(r"OUTP (CH[12]),(ON|OFF)", command)
         if outp_match:

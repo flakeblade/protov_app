@@ -35,7 +35,7 @@ def test_pyvisa_voltage_and_measure(visa_instrument):
     assert visa_instrument.query("OUTP? CH1") == "ON"
 
     voltage = float(visa_instrument.query("MEAS:VOLT? CH1"))
-    assert voltage == pytest.approx(3.3, abs=0.01)
+    assert 3.25 < voltage < 3.32
 
 
 def test_pyvisa_system_commands(visa_instrument):
@@ -67,7 +67,8 @@ def test_control_socket_load_state(mock_server):
         timeout=2000,
     )
     try:
-        assert inst.query("MEAS:CURR? CH1") == "0.243"
+        current = float(inst.query("MEAS:CURR? CH1"))
+        assert 0.22 < current < 0.27
         assert inst.query("OUTP? CH1") == "ON"
     finally:
         inst.close()
