@@ -7,6 +7,14 @@ from dataclasses import dataclass
 from .colors import normalize_color_name
 from .models import ChannelState, DeviceState
 from .state_loader import normalize_command, parse_channel_token
+from .telemetry import (
+    format_ina226_dump,
+    format_tps55289_dump,
+    format_telemetry_snapshot,
+    simulated_health,
+    simulated_input_power,
+    simulated_temperatures,
+)
 
 
 @dataclass
@@ -159,6 +167,46 @@ class ScpiDevice:
         if command == "SYST:REM":
             self.state.remote = True
             return CommandResult()
+
+        if command == "TELEM?":
+            return CommandResult(response=format_telemetry_snapshot(self.state))
+
+        temp_match = re.fullmatch(r"TEMP\? (CHA|CHB|MCU)", command)
+        if temp_match:
+            ch_a, ch_b, mcu = simulated_temperatures(self.state)
+            slot = temp_match.group(1)
+            value = {"CHA": ch_a, "CHB": ch_b, "MCU": mcu}[slot]
+            return CommandResult(response=f"{value:.3f}")
+
+        if command == "INP?":
+            inp_type, voltage, current = simulated_input_power(self.state)
+            return CommandResult(response=f"{inp_type},{voltage:.3f},{current:.3f}")
+
+        if command == "DIAG?":
+            sense_ok, converter_ok = simulated_health(self.state)
+            return CommandResult(
+                response=f"{1 if sense_ok else 0},{1 if converter_ok else 0}"
+            )
+
+        ina226_dump = re.fullmatch(r"INA226:REG\? (CHA|CHB)", command)
+        if ina226_dump:
+            channel = "A" if ina226_dump.group(1) == "CHA" else "B"
+            return CommandResult(response=format_ina226_dump(channel))
+
+        tps_dump = re.fullmatch(r"TPS55289:REG\? (CHA|CHB)", command)
+        if tps_dump:
+            channel = "A" if tps_dump.group(1) == "CHA" else "B"
+            return CommandResult(response=format_tps55289_dump(channel))
+
+        informal_ina = re.fullmatch(r"ina226 dump ch([ab])", command, re.IGNORECASE)
+        if informal_ina:
+            channel = "A" if informal_ina.group(1).lower() == "a" else "B"
+            return CommandResult(response=format_ina226_dump(channel))
+
+        informal_tps = re.fullmatch(r"tps55289 dump ch([ab])", command, re.IGNORECASE)
+        if informal_tps:
+            channel = "A" if informal_tps.group(1).lower() == "a" else "B"
+            return CommandResult(response=format_tps55289_dump(channel))
 
         self.state.push_error(-221, "Settings conflict")
         return CommandResult(error=(-221, f"Unknown command: {command}"))

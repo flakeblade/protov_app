@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Group, ScrollArea, Stack, Text, TextInput } from '@mantine/core'
 import { IconSend } from '@tabler/icons-react'
 
+import { linkDescription } from '../devices/telemetry_io'
+import type { SerialTransport } from '../serial/types'
 import classes from './serial_console.module.css'
 
 export type ConsoleLineDirection = 'tx' | 'rx' | 'sys'
@@ -37,24 +39,61 @@ function createLine(direction: ConsoleLineDirection, text: string): ConsoleLine 
   }
 }
 
-export function useSerialConsole(port: string, baudRate: number) {
+interface UseSerialConsoleOptions {
+  transport: SerialTransport | null
+  port: string
+  baudRate: number
+}
+
+export function useSerialConsole({ transport, port, baudRate }: UseSerialConsoleOptions) {
   const [command, setCommand] = useState('')
-  const [lines, setLines] = useState<ConsoleLine[]>(() => [
-    createLine('sys', `${port} @ ${baudRate} baud`),
-    createLine('sys', 'Ready — commands will be sent when connected.'),
-  ])
+  const [lines, setLines] = useState<ConsoleLine[]>([])
+  const transportRef = useRef(transport)
+  transportRef.current = transport
 
   const appendLine = useCallback((direction: ConsoleLineDirection, text: string) => {
     setLines((current) => [...current, createLine(direction, text)])
   }, [])
 
-  const handleSend = useCallback(() => {
+  useEffect(() => {
+    setLines([
+      createLine('sys', linkDescription(port, baudRate)),
+      createLine(
+        'sys',
+        transport
+          ? 'Link open — enter SCPI commands or informal register dump commands.'
+          : 'No transport — connect a device to send commands.',
+      ),
+    ])
+  }, [transport, port, baudRate])
+
+  const handleSend = useCallback(async () => {
     const trimmed = command.trim()
     if (!trimmed) return
 
     appendLine('tx', trimmed)
     setCommand('')
-    appendLine('sys', 'Not connected — command queued for WebSerial bridge.')
+
+    const activeTransport = transportRef.current
+    if (!activeTransport) {
+      appendLine('sys', 'Not connected — connect a device on the Devices page.')
+      return
+    }
+
+    try {
+      const response = await activeTransport.query(trimmed)
+      const display = response.includes('|') ? response.split('|').join('\n') : response.trim()
+      if (display) {
+        for (const line of display.split('\n')) {
+          appendLine('rx', line)
+        }
+      } else {
+        appendLine('sys', '(no response)')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Command failed'
+      appendLine('sys', message)
+    }
   }, [appendLine, command])
 
   return { lines, command, setCommand, appendLine, handleSend }
@@ -110,7 +149,7 @@ export function SerialConsolePanel({
           value={command}
           onChange={(event) => setCommand(event.currentTarget.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') onSend()
+            if (event.key === 'Enter') void onSend()
           }}
           placeholder="Command…"
           size="xs"
@@ -121,7 +160,7 @@ export function SerialConsolePanel({
           variant="light"
           color="gray"
           leftSection={<IconSend size={12} />}
-          onClick={onSend}
+          onClick={() => void onSend()}
         >
           Send
         </Button>

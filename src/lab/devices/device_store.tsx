@@ -22,6 +22,11 @@ import {
   setChannelSetpoint,
   type SetpointParam,
 } from './device_io'
+import {
+  EMPTY_TELEMETRY,
+  pollDeviceTelemetry,
+  type DeviceTelemetry,
+} from './telemetry_io'
 import { MAX_DEVICES, acquireColorSlot, rememberColorSlot } from './device-colors'
 import { openAndProbeTransport } from '../serial/probe-device'
 import { requestSerialPort } from '../serial/request-port'
@@ -37,6 +42,7 @@ export interface LabDevice {
   fwVersion: string
   hwVersion: string
   channels: Channel[]
+  telemetry: DeviceTelemetry
   colorSlot: number
   transport: SerialTransport
 }
@@ -139,6 +145,7 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       rememberColorSlot(serialColorSlotsRef.current, probed.serialNumber, colorSlot)
       await applyDeviceColorScheme(transport, colorSlot)
       const channels = await pollDeviceChannels(transport, probed.channels)
+      const telemetry = await pollDeviceTelemetry(transport).catch(() => EMPTY_TELEMETRY)
 
       setDevices((current) => [
         ...current,
@@ -151,6 +158,7 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
           fwVersion: probed.fwVersion,
           hwVersion: probed.hwVersion,
           channels,
+          telemetry,
           colorSlot,
           transport,
         },
@@ -338,10 +346,15 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       await Promise.all(
         snapshot.map(async (device) => {
           try {
-            const channels = await pollDeviceChannels(device.transport, device.channels)
+            const [channels, telemetry] = await Promise.all([
+              pollDeviceChannels(device.transport, device.channels),
+              pollDeviceTelemetry(device.transport),
+            ])
             if (cancelled) return
             setDevices((current) =>
-              current.map((entry) => (entry.id === device.id ? { ...entry, channels } : entry)),
+              current.map((entry) =>
+                entry.id === device.id ? { ...entry, channels, telemetry } : entry,
+              ),
             )
           } catch {
             // Ignore transient poll errors while the transport is busy.

@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
+import { useCallback } from 'react'
 import {
   Badge,
   Button,
@@ -21,16 +22,13 @@ import {
 
 import { SerialConsolePanel, useSerialConsole } from './serial_console'
 import { TemperatureMeters } from './temperature_meters'
-import {
-  formatIna226Dump,
-  formatTps55289Dump,
-  registerDumpCommand,
-} from '../telemetry/register_dumps'
-import type { TelemetryDevice } from '../telemetry/types'
+import type { LabDevice } from '../devices/device_store'
+import { queryRegisterDump, scpiRegisterDumpCommand } from '../devices/telemetry_io'
+import { DEFAULT_BAUD_RATE } from '../serial/constants'
 import classes from './telemetry_device_card.module.css'
 
 interface TelemetryDeviceCardProps {
-  device: TelemetryDevice
+  device: LabDevice
 }
 
 function CompactBadge({
@@ -54,20 +52,34 @@ function CompactBadge({
 }
 
 export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
-  const console = useSerialConsole(device.port, device.baudRate)
+  const console = useSerialConsole({
+    transport: device.transport,
+    port: device.port,
+    baudRate: DEFAULT_BAUD_RATE,
+  })
 
+  const { telemetry } = device
   const inputLabel =
-    device.input.type === 'pd'
-      ? `PD ${device.input.voltage.toFixed(1)} V`
-      : `USB ${device.input.voltage.toFixed(1)} V`
+    telemetry.input.type === 'pd'
+      ? `PD ${telemetry.input.voltage.toFixed(1)} V`
+      : `USB ${telemetry.input.voltage.toFixed(1)} V`
 
-  const dumpRegisters = (chip: 'ina226' | 'tps55289', channel: 'A' | 'B') => {
-    const cmd = registerDumpCommand(chip, channel)
-    const dump = chip === 'ina226' ? formatIna226Dump(channel) : formatTps55289Dump(channel)
-
-    console.appendLine('tx', cmd)
-    console.appendLine('rx', dump)
-  }
+  const dumpRegisters = useCallback(
+    async (chip: 'ina226' | 'tps55289', channel: 'A' | 'B') => {
+      const cmd = scpiRegisterDumpCommand(chip, channel)
+      console.appendLine('tx', cmd)
+      try {
+        const dump = await queryRegisterDump(device.transport, chip, channel)
+        for (const line of dump.split('\n')) {
+          console.appendLine('rx', line)
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Register dump failed'
+        console.appendLine('sys', message)
+      }
+    },
+    [console, device.transport],
+  )
 
   return (
     <Card shadow="sm" padding="sm" radius="md" withBorder className={classes.card}>
@@ -80,10 +92,10 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
         </Group>
 
         <Group gap={5} wrap="wrap">
-          <CompactBadge label={`FW v${device.firmwareVersion}`} icon={IconCode} />
-          <CompactBadge label={`HW ${device.hardwareVersion}`} icon={IconNut} />
+          <CompactBadge label={`FW v${device.fwVersion}`} icon={IconCode} />
+          <CompactBadge label={`HW ${device.hwVersion}`} icon={IconNut} />
           <CompactBadge label={`SN ${device.serialNumber}`} icon={IconNumber} />
-          <CompactBadge label={`${device.baudRate} baud`} icon={IconAntennaBars5} />
+          <CompactBadge label={`${DEFAULT_BAUD_RATE} baud`} icon={IconAntennaBars5} />
         </Group>
 
         <Group gap={5} wrap="wrap">
@@ -91,14 +103,18 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
           <CompactBadge
             label={
               <>
-                <NumberFormatter value={device.input.current} decimalScale={1} fixedDecimalScale />
+                <NumberFormatter
+                  value={telemetry.input.current}
+                  decimalScale={1}
+                  fixedDecimalScale
+                />
                 {' A'}
               </>
             }
           />
           <Badge
             size="sm"
-            color={device.health.senseOk ? 'teal' : 'red'}
+            color={telemetry.health.senseOk ? 'teal' : 'red'}
             variant="light"
             leftSection={<IconActivity size={10} />}
           >
@@ -106,7 +122,7 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
           </Badge>
           <Badge
             size="sm"
-            color={device.health.converterOk ? 'teal' : 'red'}
+            color={telemetry.health.converterOk ? 'teal' : 'red'}
             variant="light"
             leftSection={<IconActivity size={10} />}
           >
@@ -114,7 +130,7 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
           </Badge>
         </Group>
 
-        <TemperatureMeters temperatures={device.temperatures} compact />
+        <TemperatureMeters temperatures={telemetry.temperatures} compact />
 
         <Stack gap={4}>
           <Text className={classes.sectionLabel} c="dimmed">
@@ -126,7 +142,7 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
               variant="light"
               color="gray"
               leftSection={<IconBinary size={12} />}
-              onClick={() => dumpRegisters('ina226', 'A')}
+              onClick={() => void dumpRegisters('ina226', 'A')}
             >
               INA226 A
             </Button>
@@ -135,7 +151,7 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
               variant="light"
               color="gray"
               leftSection={<IconBinary size={12} />}
-              onClick={() => dumpRegisters('ina226', 'B')}
+              onClick={() => void dumpRegisters('ina226', 'B')}
             >
               INA226 B
             </Button>
@@ -144,7 +160,7 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
               variant="light"
               color="gray"
               leftSection={<IconBinary size={12} />}
-              onClick={() => dumpRegisters('tps55289', 'A')}
+              onClick={() => void dumpRegisters('tps55289', 'A')}
             >
               TPS55289 A
             </Button>
@@ -153,7 +169,7 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
               variant="light"
               color="gray"
               leftSection={<IconBinary size={12} />}
-              onClick={() => dumpRegisters('tps55289', 'B')}
+              onClick={() => void dumpRegisters('tps55289', 'B')}
             >
               TPS55289 B
             </Button>

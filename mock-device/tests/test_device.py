@@ -58,3 +58,53 @@ def test_channel_color_invalid():
     result = device.handle("CH1:COLR MAGENTA")
     assert result.error is not None
     assert device.handle("SYST:ERR?").response.startswith("-221")
+
+
+def test_telemetry_snapshot():
+    device = ScpiDevice()
+    result = device.handle("TELEM?")
+    assert result.response is not None
+    parts = result.response.split(",")
+    assert len(parts) == 8
+    ch_a, ch_b, mcu, inp_type, inp_v, inp_i, sense, converter = parts
+    assert float(ch_a) > 20
+    assert float(ch_b) > 20
+    assert float(mcu) > 25
+    assert inp_type in ("PD", "STD")
+    assert float(inp_v) > 0
+    assert float(inp_i) > 0
+    assert sense in ("0", "1")
+    assert converter in ("0", "1")
+
+
+def test_temperature_queries():
+    device = ScpiDevice()
+    ch_a = float(device.handle("TEMP? CHA").response)
+    ch_b = float(device.handle("TEMP? CHB").response)
+    mcu = float(device.handle("TEMP? MCU").response)
+    assert ch_a > 20
+    assert ch_b > 20
+    assert mcu > 25
+
+
+def test_input_and_diag_queries():
+    device = ScpiDevice()
+    inp = device.handle("INP?").response
+    assert inp is not None
+    assert inp.startswith("PD,") or inp.startswith("STD,")
+    diag = device.handle("DIAG?").response
+    assert diag == "1,1"
+
+
+def test_register_dumps():
+    device = ScpiDevice()
+    ina = device.handle("INA226:REG? CHA").response
+    assert ina is not None
+    assert "INA226" in ina
+    assert "|" in ina
+    informal = device.handle("ina226 dump chb").response
+    assert informal is not None
+    assert "0x40" in informal
+    tps = device.handle("TPS55289:REG? CHB").response
+    assert tps is not None
+    assert "TPS55289" in tps

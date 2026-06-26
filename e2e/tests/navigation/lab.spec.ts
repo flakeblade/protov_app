@@ -32,6 +32,6 @@ test.describe('Lab sidebar', () => {
     await expect(page.getByRole('link', { name: 'Telemetry' })).toBeVisible()
 
     await lab.openTelemetry()
-    await expect(page.getByText('SERIAL CONSOLE').first()).toBeVisible()
+    await expect(page.getByText('No devices connected')).toBeVisible()
   })
 })

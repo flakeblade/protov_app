@@ -81,8 +81,18 @@ PROTOV_MOCK_WEB_BRIDGE=0 PROTOV_MOCK_SERVER_PORT=/tmp/protov-mini-peer ./scripts
 | Appearance | `CHn:COLR <name>`, `CHn:COLR?` — colors: `RED`, `BLUE`, `YELLOW`, `GREEN`, `ORANGE`, `TEAL`, `VIOLET`, `PINK`, `CYAN`, `LIME`, `GRAY` (default CH1=`RED`, CH2=`BLUE`) |
 | Output | `OUTP CHn,ON\|OFF`, `OUTP? CHn`, `OUTP:RESET:PROT [CHn]` |
 | System | `SYST:ERR?`, `SYST:VERS?`, `SYST:LOC`, `SYST:REM` |
+| Telemetry | `TELEM?`, `TEMP? CHA\|CHB\|MCU`, `INP?`, `DIAG?` |
+| Register dump | `INA226:REG? CHA\|CHB`, `TPS55289:REG? CHA\|CHB` (also `ina226 dump cha`, `tps55289 dump chb`) |
 
 Responses use three decimal places for V/A/W (e.g. `3.300`, `0.243`).
+
+`TELEM?` returns a comma-separated snapshot for live UI polling:
+
+```
+<temp_chA>,<temp_chB>,<temp_mcu>,<PD|STD>,<input_V>,<input_A>,<sense_ok>,<converter_ok>
+```
+
+Register dump responses use `|` as a line separator (the web app splits these for display).
 
 `*IDN?` returns:
 
