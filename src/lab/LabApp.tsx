@@ -10,6 +10,8 @@ import { DevicesPage } from './pages/devices'
 import { ControlsPage } from './pages/controls'
 import { GraphsPage } from './pages/graphs'
 import { TelemetryPage } from './pages/telemetry'
+import { DeviceStoreProvider } from './devices/device_store'
+import { GraphStoreProvider } from './graphs/graph_store'
 import { isPathAllowedInView, LabViewProvider, useLabView } from './lab_view'
 
 function LabRoutes() {
@@ -65,7 +67,9 @@ export default function LabApp() {
 
   return (
     <LabViewProvider>
-      <HomeSpotlight />
+      <DeviceStoreProvider>
+        <GraphStoreProvider>
+        <HomeSpotlight />
       <AppShell
         padding="md"
         header={{ height: 60 }}
@@ -87,6 +91,8 @@ export default function LabApp() {
           <LabRoutes />
         </AppShell.Main>
       </AppShell>
+        </GraphStoreProvider>
+      </DeviceStoreProvider>
     </LabViewProvider>
   )
 }

@@ -97,6 +97,8 @@ export const test = base.extend<MockDeviceFixtures>({
         PROTOV_MOCK_PORT_FILE: portFile,
         PROTOV_MOCK_CTRL_SOCK: controlSocket,
         PROTOV_MOCK_STATE: path.join(MOCK_ROOT, 'states/default.yaml'),
+        PROTOV_MOCK_SERVER_PORT: 'auto',
+        PROTOV_MOCK_WEB_BRIDGE: '0',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })

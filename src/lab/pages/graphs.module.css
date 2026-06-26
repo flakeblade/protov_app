@@ -1,0 +1,31 @@
+.ratePanel {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7));
+}
+
+.controlsColumn {
+  flex: 1;
+  min-width: min(100%, 22rem);
+  max-width: 32rem;
+}
+
+.recordingColumn {
+  min-width: 12rem;
+}
+
+.rateValue {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: var(--mantine-font-size-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--mantine-color-dimmed);
+}
+
+.timeHint {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+  font-family: var(--mantine-font-family-monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.graphGrid {
+  align-items: stretch;
+}

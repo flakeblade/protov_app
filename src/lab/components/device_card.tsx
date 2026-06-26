@@ -13,6 +13,7 @@ import type { Icon } from '@tabler/icons-react'
 
 import type { Channel } from './channel_chip'
 import { ChannelChip } from './channel_chip'
+import { useLabView } from '../lab_view'
 import classes from './device_card.module.css'
 
 export interface DeviceBadge {
@@ -28,6 +29,9 @@ export interface DeviceCardProps {
   channels: Channel[]
   onButtonClick?: () => void
   buttonLabel?: string
+  onSecondaryButtonClick?: () => void
+  secondaryButtonLabel?: string
+  onChannelToggle?: (identifier: string) => void
   hideButton?: boolean
   children?: ReactNode
 }
@@ -37,11 +41,7 @@ function DeviceImagePlaceholder({ name }: { name: string }) {
     <Box
       h={150}
       bg="light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5))"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      className={classes.imagePlaceholder}
     >
       <Text c="dimmed" size="sm">
         {name}
@@ -58,9 +58,14 @@ export function DeviceCard({
   channels,
   onButtonClick,
   buttonLabel = 'Disable',
+  onSecondaryButtonClick,
+  secondaryButtonLabel,
+  onChannelToggle,
   hideButton = false,
   children,
 }: DeviceCardProps) {
+  const { isEngineering } = useLabView()
+
   const details = badges.map((badge) => {
     const Icon = badge.icon
     return (
@@ -75,18 +80,8 @@ export function DeviceCard({
     )
   })
 
-  const channelDetails = channels.map((ch) => (
-    <ChannelChip key={ch.identifier} channel={ch} />
-  ))
-
   return (
-    <Card
-      shadow="sm"
-      padding="lg"
-      radius="md"
-      withBorder
-      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-    >
+    <Card shadow="sm" padding="lg" radius="md" withBorder className={classes.cardShell}>
       <Card.Section>
         <DeviceImagePlaceholder name={name} />
       </Card.Section>
@@ -97,41 +92,55 @@ export function DeviceCard({
       </Group>
 
       <Stack justify="space-between" align="stretch" style={{ flex: 1 }}>
-        <Text size="sm" c="dimmed">
+        <Text size="sm" c="dimmed" mih={40}>
           {description}
         </Text>
 
         {children}
 
-        <Card.Section className={classes.section}>
-          <Text mt="md" className={classes.label} c="dimmed">
-            DETAILS
-          </Text>
-          <Group gap={7} mt={5}>
-            {details}
-          </Group>
-        </Card.Section>
+        {isEngineering ? (
+          <Card.Section className={classes.section}>
+            <Text mt="md" className={classes.label} c="dimmed">
+              DETAILS
+            </Text>
+            <Group gap={7} mt={5} className={classes.sectionSpacer}>
+              {details}
+            </Group>
+          </Card.Section>
+        ) : null}
 
         <Card.Section className={classes.section}>
           <Text mt="md" className={classes.label} c="dimmed">
             AT A GLANCE
           </Text>
-          <Group gap={7} mt={5}>
-            {channelDetails}
-          </Group>
+          <Stack gap={6} mt={5} className={classes.sectionSpacer}>
+            {channels.map((ch) => (
+              <ChannelChip key={ch.identifier} channel={ch} onToggle={onChannelToggle} />
+            ))}
+          </Stack>
         </Card.Section>
 
-        {!hideButton && (
-          <Button
-            variant="outline"
-            color="grey"
-            fullWidth
-            mt="md"
-            radius="md"
-            onClick={onButtonClick}
-          >
-            {buttonLabel}
-          </Button>
+        {!hideButton && (onButtonClick || onSecondaryButtonClick) ? (
+          <Stack gap="xs" mt="md" className={classes.buttonStack}>
+            {onButtonClick ? (
+              <Button variant="filled" color="gray" fullWidth radius="md" onClick={onButtonClick}>
+                {buttonLabel}
+              </Button>
+            ) : null}
+            {onSecondaryButtonClick ? (
+              <Button
+                variant="outline"
+                color="grey"
+                fullWidth
+                radius="md"
+                onClick={onSecondaryButtonClick}
+              >
+                {secondaryButtonLabel ?? 'Secondary'}
+              </Button>
+            ) : null}
+          </Stack>
+        ) : (
+          <Box className={classes.buttonStack} />
         )}
       </Stack>
     </Card>

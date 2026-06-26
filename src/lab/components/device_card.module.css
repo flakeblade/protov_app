@@ -1,3 +1,16 @@
+.cardShell {
+  min-height: 520px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.imagePlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .section {
   border-top: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
   padding-left: var(--mantine-spacing-lg);
@@ -8,4 +21,13 @@
   text-transform: uppercase;
   font-size: var(--mantine-font-size-xs);
   font-weight: 700;
+}
+
+.sectionSpacer {
+  min-height: 52px;
+}
+
+.buttonStack {
+  min-height: 88px;
+  justify-content: flex-end;
 }

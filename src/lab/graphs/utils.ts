@@ -14,6 +14,23 @@ export function filterPointsByWindow(points: TimeSeriesPoint[], window: TimeWind
   return points.filter((point) => point.t >= window.start && point.t <= window.end)
 }
 
+const MAX_RENDER_POINTS = 1500
+
+/** Reduce point count for SVG rendering while preserving shape. */
+export function downsampleForRender(points: TimeSeriesPoint[], maxPoints = MAX_RENDER_POINTS) {
+  if (points.length <= maxPoints) return points
+  const step = Math.ceil(points.length / maxPoints)
+  const sampled: TimeSeriesPoint[] = []
+  for (let index = 0; index < points.length; index += step) {
+    sampled.push(points[index])
+  }
+  const last = points[points.length - 1]
+  if (sampled[sampled.length - 1]?.t !== last.t) {
+    sampled.push(last)
+  }
+  return sampled
+}
+
 export function filterPointsByTimeRange(points: TimeSeriesPoint[], tStart: number, tEnd: number) {
   const start = Math.min(tStart, tEnd)
   const end = Math.max(tStart, tEnd)
@@ -128,4 +145,65 @@ export function clampWindow(window: TimeWindow, dataStart: number, dataEnd: numb
   }
 
   return { start, end }
+}
+
+/** Clamp a visible window to data bounds and a maximum span (buffer depth). */
+export function clampWindowToMaxSpan(
+  window: TimeWindow,
+  dataStart: number,
+  dataEnd: number,
+  maxSpanMs: number,
+  minSpanMs = 1000,
+): TimeWindow {
+  const effectiveMinSpan = Math.min(minSpanMs, maxSpanMs, Math.max(dataEnd - dataStart, 1))
+  let next = clampWindow(window, dataStart, dataEnd, effectiveMinSpan)
+
+  if (next.end - next.start > maxSpanMs) {
+    next = { start: next.end - maxSpanMs, end: next.end }
+  }
+
+  if (next.start < dataStart) {
+    next = { start: dataStart, end: Math.min(dataStart + maxSpanMs, dataEnd) }
+  }
+
+  return next
+}
+
+export interface ChannelSeriesExport {
+  serialNumber: string
+  channelIdentifier: string
+  series: Record<GraphMetric, TimeSeriesPoint[]>
+}
+
+export function downloadAllChannelsCsv(
+  channels: ChannelSeriesExport[],
+  filename = 'all-channels.csv',
+) {
+  const header = 'timestamp_ms,device_serial,channel,voltage_V,current_A,power_W'
+  const rows: string[] = []
+
+  for (const channel of channels) {
+    for (const point of channel.series.voltage) {
+      rows.push(
+        [
+          point.t,
+          channel.serialNumber,
+          channel.channelIdentifier,
+          point.value.toFixed(6),
+          lookupAtTime(channel.series.current, point.t),
+          lookupAtTime(channel.series.power, point.t),
+        ].join(','),
+      )
+    }
+  }
+
+  rows.sort((a, b) => Number(a.split(',')[0]) - Number(b.split(',')[0]))
+
+  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
 }

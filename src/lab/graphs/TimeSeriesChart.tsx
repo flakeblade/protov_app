@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMantineColorScheme, useMantineTheme } from '@mantine/core'
 import type { MantineColor } from '@mantine/core'
 
@@ -8,21 +8,24 @@ import {
   filterPointsByWindow,
   formatAxisTime,
   nearestPoint,
+  downsampleForRender,
   resolveYAxis,
 } from './utils'
 import type { SelectionStats, TimeSeriesPoint, TimeWindow, YAxisRange } from './types'
 import classes from './TimeSeriesChart.module.css'
 
-const PLOT = { top: 36, right: 14, bottom: 28, left: 52 }
+const PLOT = { top: 52, right: 14, bottom: 28, left: 56 }
 
 interface TimeSeriesChartProps {
   points: TimeSeriesPoint[]
+  dataRevision: number
   unit: string
   decimals: number
   color: MantineColor
   window: TimeWindow
   yAxis: YAxisRange
   fallbackY: { min: number; max: number }
+  setpoint: number | null
   onSelectionChange: (stats: SelectionStats | null) => void
 }
 
@@ -38,14 +41,16 @@ function buildPath(plotPoints: PlotPoint[]) {
   return plotPoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
 }
 
-export function TimeSeriesChart({
+export const TimeSeriesChart = memo(function TimeSeriesChart({
   points,
+  dataRevision: _dataRevision,
   unit,
   decimals,
   color,
   window,
   yAxis,
   fallbackY,
+  setpoint,
   onSelectionChange,
 }: TimeSeriesChartProps) {
   const theme = useMantineTheme()
@@ -58,6 +63,7 @@ export function TimeSeriesChart({
   const [dragEnd, setDragEnd] = useState<PlotPoint | null>(null)
 
   const visiblePoints = useMemo(() => filterPointsByWindow(points, window), [points, window])
+  const renderPoints = useMemo(() => downsampleForRender(visiblePoints), [visiblePoints])
   const yBounds = useMemo(
     () => resolveYAxis(visiblePoints, yAxis, fallbackY),
     [visiblePoints, yAxis, fallbackY],
@@ -70,13 +76,13 @@ export function TimeSeriesChart({
 
   const plotPoints = useMemo<PlotPoint[]>(
     () =>
-      visiblePoints.map((point) => ({
+      renderPoints.map((point) => ({
         t: point.t,
         value: point.value,
         x: PLOT.left + ((point.t - window.start) / timeSpan) * plotWidth,
         y: PLOT.top + (1 - (point.value - yBounds.min) / valueSpan) * plotHeight,
       })),
-    [plotHeight, plotWidth, timeSpan, valueSpan, visiblePoints, window.start, yBounds.max, yBounds.min],
+    [plotHeight, plotWidth, timeSpan, valueSpan, renderPoints, window.start, yBounds.max, yBounds.min],
   )
 
   const lineColor = theme.colors[color][colorScheme === 'dark' ? 4 : 6]
@@ -204,6 +210,13 @@ export function TimeSeriesChart({
     [clientToPlot, dragStart, snapToSeries],
   )
 
+  const setpointY =
+    setpoint !== null
+      ? PLOT.top + (1 - (setpoint - yBounds.min) / valueSpan) * plotHeight
+      : null
+  const setpointInView =
+    setpointY !== null && setpointY >= PLOT.top && setpointY <= PLOT.top + plotHeight
+
   return (
     <div ref={chartRef} className={classes.chart}>
       {hover && (
@@ -222,6 +235,7 @@ export function TimeSeriesChart({
           if (!dragStart) return
         }}
         onMouseDown={(event) => {
+          event.preventDefault()
           const plotPoint = snapToSeries(clientToPlot(event.clientX, event.clientY))
           setDragStart(plotPoint)
           setDragEnd(plotPoint)
@@ -233,7 +247,7 @@ export function TimeSeriesChart({
           setDragEnd(null)
         }}
       >
-        {yTicks.map((tick) => (
+        {yTicks.map((tick, index) => (
           <g key={tick.y}>
             <line
               x1={PLOT.left}
@@ -242,9 +256,11 @@ export function TimeSeriesChart({
               y2={tick.y}
               stroke={colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[2]}
             />
-            <text x={PLOT.left - 6} y={tick.y + 3} textAnchor="end" className={classes.axisLabel}>
-              {tick.value.toFixed(decimals)}
-            </text>
+            {index > 0 ? (
+              <text x={PLOT.left - 6} y={tick.y + 3} textAnchor="end" className={classes.axisLabel}>
+                {tick.value.toFixed(decimals)}
+              </text>
+            ) : null}
           </g>
         ))}
 
@@ -261,13 +277,23 @@ export function TimeSeriesChart({
         ))}
 
         <text
-          x={PLOT.left - 8}
-          y={PLOT.top - 12}
+          x={PLOT.left - 10}
+          y={PLOT.top - 20}
           textAnchor="end"
           className={classes.unitLabel}
         >
           {unit}
         </text>
+
+        {setpointInView && setpointY !== null && (
+          <line
+            x1={PLOT.left}
+            x2={PLOT.left + plotWidth}
+            y1={setpointY}
+            y2={setpointY}
+            className={classes.setpointLine}
+          />
+        )}
 
         <path d={path} className={classes.seriesLine} stroke={lineColor} />
 
@@ -302,4 +328,4 @@ export function TimeSeriesChart({
       </svg>
     </div>
   )
-}
+})

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import type { MantineColor } from '@mantine/core'
 import {
   Badge,
+  Button,
   Card,
   Container,
   Group,
@@ -8,30 +10,72 @@ import {
   NumberInput,
   Paper,
   SimpleGrid,
-  Skeleton,
   Stack,
   Switch,
   Text,
   Tooltip,
   useMantineTheme,
 } from '@mantine/core'
-import { IconBolt } from '@tabler/icons-react'
+import { IconAdjustments, IconBolt } from '@tabler/icons-react'
+import { useNavigate } from 'react-router-dom'
 
-import classes from './controls.module.css'
 import type { Channel } from '../components/channel_chip'
+import { useDeviceStore } from '../devices/device_store'
+import type { SetpointParam } from '../devices/device_io'
+import { CURRENT_MAX, VOLTAGE_MAX } from '../devices/device_io'
 import { useLabView } from '../lab_view'
+import classes from './controls.module.css'
 
-const VOLTAGE_MAX = 20
-const CURRENT_MAX = 5
 const DECIMALS = 3
 
 type RegulationMode = 'CV' | 'CC'
 
-interface ChannelCardData extends Channel {
-  regulationMode?: RegulationMode
+const REGULATION_TOOLTIPS: Record<RegulationMode, string> = {
+  CV: 'Constant voltage — output holds target voltage',
+  CC: 'Constant current — output holds target current',
+}
+
+function regulationMode(channel: Channel): RegulationMode {
+  if (!channel.active) return 'CV'
+  if (channel.currentSet > 0 && channel.measuredCurrent >= channel.currentSet * 0.98) {
+    return 'CC'
+  }
+  return 'CV'
 }
 
 export function ControlsPage() {
+  const navigate = useNavigate()
+  const { devices, toggleChannelOutput, updateChannelSetpoint } = useDeviceStore()
+
+  const channels = devices.flatMap((device) =>
+    device.channels.map((channel) => ({ deviceId: device.id, channel })),
+  )
+
+  if (channels.length === 0) {
+    return (
+      <Container size="sm">
+        <Stack align="center" gap="md" py="xl">
+          <IconAdjustments size={40} stroke={1.5} />
+          <Stack align="center" gap={4}>
+            <Text fw={600}>No devices connected</Text>
+            <Text size="sm" c="dimmed" ta="center">
+              Connect a ProtoV MINI on the Devices page to adjust channel setpoints and outputs
+              here.
+            </Text>
+          </Stack>
+          <Button
+            leftSection={<IconBolt size={16} />}
+            onClick={() => {
+              navigate('/lab/devices')
+            }}
+          >
+            Go to Devices
+          </Button>
+        </Stack>
+      </Container>
+    )
+  }
+
   return (
     <Container>
       <SimpleGrid
@@ -39,52 +83,18 @@ export function ControlsPage() {
         cols={{ base: 1, '300px': 1, '850px': 2 }}
         spacing={{ base: 'md' }}
       >
-        <Skeleton radius="md" visible={false} animate={false}>
+        {channels.map(({ deviceId, channel }) => (
           <ChannelCard
-            identifier="A"
-            color="red"
-            voltage={20.3}
-            current={0.5}
-            active={true}
-            regulationMode="CV"
+            key={`${deviceId}-${channel.identifier}`}
+            channel={channel}
+            onToggleOutput={() => {
+              void toggleChannelOutput(deviceId, channel.identifier)
+            }}
+            onSetpointChange={(param, value) => {
+              void updateChannelSetpoint(deviceId, channel.identifier, param, value)
+            }}
           />
-        </Skeleton>
-
-        <Skeleton radius="md" visible={false} animate={false}>
-          <ChannelCard
-            identifier="B"
-            color="blue"
-            voltage={1.8}
-            current={0.1}
-            active={true}
-            regulationMode="CC"
-          />
-        </Skeleton>
-
-        <Skeleton radius="md" visible={false} animate={false}>
-          <ChannelCard
-            identifier="C"
-            color="yellow"
-            voltage={1.8}
-            current={0.1}
-            active={true}
-            regulationMode="CV"
-          />
-        </Skeleton>
-
-        <Skeleton radius="md" visible={false} animate={false}>
-          <ChannelCard
-            identifier="D"
-            color="green"
-            voltage={1.8}
-            current={0.1}
-            active={true}
-            regulationMode="CC"
-          />
-        </Skeleton>
-
-        <Skeleton radius="md" animate />
-        <Skeleton radius="md" animate />
+        ))}
       </SimpleGrid>
     </Container>
   )
@@ -101,11 +111,7 @@ function ReadingValue({ value, unit }: ReadingValueProps) {
   return (
     <Paper className={classes.readingBox} withBorder radius="sm">
       <span className={classes.readingValue}>
-        <NumberFormatter
-          value={value + offset}
-          decimalScale={DECIMALS}
-          fixedDecimalScale
-        />
+        <NumberFormatter value={value + offset} decimalScale={DECIMALS} fixedDecimalScale />
       </span>
       <span className={classes.readingUnit}>{unit}</span>
     </Paper>
@@ -115,13 +121,42 @@ function ReadingValue({ value, unit }: ReadingValueProps) {
 interface LimitFieldProps {
   label: string
   unit: string
+  value: number
   min: number
   max: number
   placeholder: string
   tooltip: string
+  onCommit: (value: number) => void
 }
 
-function LimitField({ label, unit, min, max, placeholder, tooltip }: LimitFieldProps) {
+function LimitField({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  placeholder,
+  tooltip,
+  onCommit,
+}: LimitFieldProps) {
+  const [draft, setDraft] = useState(value)
+
+  useEffect(() => {
+    setDraft(value)
+  }, [value])
+
+  const commit = () => {
+    if (draft === null || Number.isNaN(draft)) {
+      setDraft(value)
+      return
+    }
+    const clamped = Math.min(max, Math.max(min, draft))
+    setDraft(clamped)
+    if (clamped !== value) {
+      onCommit(clamped)
+    }
+  }
+
   return (
     <Tooltip label={tooltip}>
       <div className={classes.limitField}>
@@ -129,6 +164,14 @@ function LimitField({ label, unit, min, max, placeholder, tooltip }: LimitFieldP
         <NumberInput
           className={classes.limitInput}
           classNames={{ input: classes.limitInputField }}
+          value={draft}
+          onChange={(next) => setDraft(typeof next === 'number' ? next : 0)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.currentTarget.blur()
+            }
+          }}
           placeholder={placeholder}
           suffix={unit}
           decimalScale={DECIMALS}
@@ -144,50 +187,62 @@ function LimitField({ label, unit, min, max, placeholder, tooltip }: LimitFieldP
 
 interface ParameterRowProps {
   label: string
-  value: number
+  liveValue: number
+  setValue: number
   unit: string
   min: number
   max: number
   setTooltip: string
   protectionLabel?: 'OVP' | 'OCP'
+  protectionValue?: number
   protectionTooltip?: string
   showProtection?: boolean
+  onSetCommit: (value: number) => void
+  onProtectionCommit?: (value: number) => void
 }
 
 function ParameterRow({
   label,
-  value,
+  liveValue,
+  setValue,
   unit,
   min,
   max,
   setTooltip,
   protectionLabel,
+  protectionValue = 0,
   protectionTooltip,
   showProtection = true,
+  onSetCommit,
+  onProtectionCommit,
 }: ParameterRowProps) {
   const placeholder = `0.${'0'.repeat(DECIMALS)}–${max}.${'0'.repeat(DECIMALS)}`
 
   return (
     <div className={classes.parameterRow}>
       <Text className={classes.rowLabel}>{label}</Text>
-      <ReadingValue value={value} unit={unit} />
+      <ReadingValue value={liveValue} unit={unit} />
       <div className={showProtection ? classes.limitStack : classes.limitStackSingle}>
         <LimitField
           label="SET"
           unit={unit}
+          value={setValue}
           min={min}
           max={max}
           placeholder={placeholder}
           tooltip={setTooltip}
+          onCommit={onSetCommit}
         />
-        {showProtection && protectionLabel && protectionTooltip && (
+        {showProtection && protectionLabel && protectionTooltip && onProtectionCommit && (
           <LimitField
             label={protectionLabel}
             unit={unit}
+            value={protectionValue}
             min={min}
             max={max}
             placeholder={placeholder}
             tooltip={protectionTooltip}
+            onCommit={onProtectionCommit}
           />
         )}
       </div>
@@ -195,21 +250,18 @@ function ParameterRow({
   )
 }
 
-const REGULATION_TOOLTIPS: Record<RegulationMode, string> = {
-  CV: 'Constant voltage — output holds target voltage',
-  CC: 'Constant current — output holds target current',
+interface ChannelCardProps {
+  channel: Channel
+  onToggleOutput: () => void
+  onSetpointChange: (param: SetpointParam, value: number) => void
 }
 
-function ChannelCard({
-  identifier,
-  color,
-  voltage,
-  current,
-  regulationMode = 'CV',
-}: ChannelCardData) {
+function ChannelCard({ channel, onToggleOutput, onSetpointChange }: ChannelCardProps) {
   const theme = useMantineTheme()
   const { isEngineering } = useLabView()
-  const borderColor = theme.colors[color as MantineColor][5]
+  const mode = regulationMode(channel)
+  const borderColor = theme.colors[channel.color as MantineColor]?.[5] ?? theme.colors.gray[5]
+  const livePower = channel.measuredVoltage * channel.measuredCurrent
 
   return (
     <Card
@@ -225,21 +277,24 @@ function ChannelCard({
       }}
     >
       <Group justify="space-between" mb="md">
-        <Badge color={color} size="md">
-          {`Channel ${identifier}`}
+        <Badge color={channel.color} size="md">
+          {`Channel ${channel.identifier}`}
         </Badge>
 
         <Group gap="sm">
-          <Tooltip label={REGULATION_TOOLTIPS[regulationMode]}>
+          <Tooltip label={REGULATION_TOOLTIPS[mode]}>
             <Text component="span" className={classes.modeTag}>
-              {regulationMode}
+              {mode}
             </Text>
           </Tooltip>
 
           <Switch
             size="md"
-            color={color}
+            color={channel.color}
+            checked={channel.active}
+            onChange={onToggleOutput}
             onLabel={<IconBolt size={16} stroke={2.5} />}
+            aria-label={`Toggle output for channel ${channel.identifier}`}
           />
         </Group>
       </Group>
@@ -247,31 +302,39 @@ function ChannelCard({
       <Stack gap="xs">
         <ParameterRow
           label="Voltage"
-          value={voltage}
+          liveValue={channel.measuredVoltage}
+          setValue={channel.voltageSet}
           unit="V"
           min={0}
           max={VOLTAGE_MAX}
           setTooltip="Target voltage on output"
           protectionLabel="OVP"
+          protectionValue={channel.ovp}
           protectionTooltip="Over-voltage protection limit"
           showProtection={isEngineering}
+          onSetCommit={(value) => onSetpointChange('voltage', value)}
+          onProtectionCommit={(value) => onSetpointChange('ovp', value)}
         />
 
         <ParameterRow
           label="Current"
-          value={current}
+          liveValue={channel.measuredCurrent}
+          setValue={channel.currentSet}
           unit="A"
           min={0}
           max={CURRENT_MAX}
           setTooltip="Target current on output"
           protectionLabel="OCP"
+          protectionValue={channel.ocp}
           protectionTooltip="Over-current protection limit"
           showProtection={isEngineering}
+          onSetCommit={(value) => onSetpointChange('current', value)}
+          onProtectionCommit={(value) => onSetpointChange('ocp', value)}
         />
 
         <div className={classes.powerRow}>
           <Text className={classes.rowLabel}>Power</Text>
-          <ReadingValue value={voltage * current} unit="W" />
+          <ReadingValue value={livePower} unit="W" />
         </div>
       </Stack>
     </Card>

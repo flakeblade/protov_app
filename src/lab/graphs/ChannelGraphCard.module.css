@@ -21,12 +21,6 @@
   margin-bottom: var(--mantine-spacing-xs);
 }
 
-@media (min-width: 36em) {
-  .axisRow {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
 .axisLabel {
   font-size: 10px;
   font-weight: 600;
@@ -45,18 +39,5 @@
   font-family: var(--mantine-font-family-monospace);
   font-size: var(--mantine-font-size-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--mantine-color-dimmed);
-}
-
-.footerRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: var(--mantine-spacing-sm);
-  gap: var(--mantine-spacing-sm);
-}
-
-.timeHint {
-  font-size: var(--mantine-font-size-xs);
   color: var(--mantine-color-dimmed);
 }
