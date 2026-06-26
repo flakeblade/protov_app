@@ -28,8 +28,10 @@ import {
   type DeviceTelemetry,
 } from './telemetry_io'
 import { MAX_DEVICES, acquireColorSlot, rememberColorSlot } from './device-colors'
+import { deviceSession } from './device_session'
 import { openAndProbeTransport } from '../serial/probe-device'
-import { requestSerialPort } from '../serial/request-port'
+import { requestSerialPort, usesMockTransport } from '../serial/request-port'
+import { serialDebug, serialWarn } from '../serial/serial-debug'
 import { isWebSerialSupported, type SerialTransport } from '../serial/types'
 import { createTransportQueue, withTransportQueue } from '../serial/transport-queue'
 
@@ -89,16 +91,27 @@ interface DeviceStoreProviderProps {
 }
 
 export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
-  const [devices, setDevices] = useState<LabDevice[]>([])
+  const [devices, setDevicesState] = useState<LabDevice[]>(() => deviceSession.list())
   const [connecting, setConnecting] = useState(false)
   const devicesRef = useRef(devices)
   devicesRef.current = devices
   const serialColorSlotsRef = useRef(new Map<string, number>())
 
+  const setDevices = useCallback(
+    (value: LabDevice[] | ((current: LabDevice[]) => LabDevice[])) => {
+      setDevicesState((current) => {
+        const next = typeof value === 'function' ? value(current) : value
+        deviceSession.replaceAll(next)
+        return next
+      })
+    },
+    [],
+  )
+
   const connectDevice = useCallback(async () => {
     if (connecting) return
 
-    if (devices.length >= MAX_DEVICES) {
+    if (devicesRef.current.length >= MAX_DEVICES) {
       notifications.show({
         id: 'device-limit-reached',
         title: 'Device limit reached',
@@ -108,7 +121,7 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       return
     }
 
-    if (!import.meta.env.DEV && !isWebSerialSupported()) {
+    if (!usesMockTransport() && !isWebSerialSupported()) {
       notifications.show({
         id: 'web-serial-unavailable',
         title: 'Web Serial unavailable',
@@ -120,13 +133,16 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
     }
 
     setConnecting(true)
+    serialDebug('connectDevice: start')
 
     try {
+      serialDebug('connectDevice: requesting transport')
       const rawTransport = await requestSerialPort()
       const transport = withTransportQueue(rawTransport, createTransportQueue())
+      serialDebug('connectDevice: probing device')
       const probed = await openAndProbeTransport(transport)
 
-      if (devices.some((device) => device.serialNumber === probed.serialNumber)) {
+      if (deviceSession.has(probed.serialNumber)) {
         await transport.close()
         notifications.show({
           id: 'device-already-connected',
@@ -137,9 +153,11 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
         return
       }
 
+      console.log(probed);
+
       const colorSlot = acquireColorSlot(
         probed.serialNumber,
-        devices,
+        devicesRef.current,
         serialColorSlotsRef.current,
       )
       rememberColorSlot(serialColorSlotsRef.current, probed.serialNumber, colorSlot)
@@ -172,6 +190,7 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
         icon: <IconPlugConnected size={18} />,
       })
     } catch (error) {
+      serialWarn('connectDevice: failed', error)
       if (error instanceof DOMException && error.name === 'NotFoundError') {
         return
       }
@@ -196,14 +215,15 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
     } finally {
       setConnecting(false)
     }
-  }, [connecting, devices])
+  }, [connecting, setDevices])
 
   const disconnectDevice = useCallback(
     async (deviceId: string) => {
-      const device = devices.find((entry) => entry.id === deviceId)
+      const device = devicesRef.current.find((entry) => entry.id === deviceId)
       if (!device) return
 
       await device.transport.close()
+      deviceSession.remove(deviceId)
       setDevices((current) => current.filter((entry) => entry.id !== deviceId))
 
       notifications.show({
@@ -213,7 +233,7 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
         color: 'gray',
       })
     },
-    [devices],
+    [setDevices],
   )
 
   const toggleChannelOutput = useCallback(

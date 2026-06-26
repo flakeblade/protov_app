@@ -77,7 +77,7 @@ export function scpiRegisterDumpCommand(chip: 'ina226' | 'tps55289', channel: 'A
 
 export function linkKindFromTransport(label: string): 'mock-bridge' | 'web-serial' | 'unknown' {
   if (label.includes('Mock') || label.includes('bridge')) return 'mock-bridge'
-  if (label.startsWith('USB ')) return 'web-serial'
+  if (label.includes('WebSerial') || label.startsWith('USB ')) return 'web-serial'
   return 'unknown'
 }
 

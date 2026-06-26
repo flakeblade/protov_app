@@ -114,36 +114,31 @@ class SerialScpiServer:
 
     def _process_buffer(self, buffer: str, write_fn) -> str:
         while True:
-            for terminator in ("\n", "\r"):
-                if terminator in buffer:
-                    line, _, remainder = buffer.partition(terminator)
-                    response = self._handle_line(line)
-                    if response is not None:
-                        write_fn(response.encode("utf-8"))
-                    buffer = remainder
-                    break
-            else:
+            if "\n" not in buffer:
                 break
+            line, _, remainder = buffer.partition("\n")
+            response = self._handle_line(line)
+            if response is not None:
+                write_fn(response.encode("utf-8"))
+            buffer = remainder
         return buffer
 
     @staticmethod
     def _split_buffer_bytes(buffer: bytes) -> tuple[str, bytes]:
         text = buffer.decode("utf-8", errors="replace")
-        if "\n" in text or "\r" in text:
-            lines = []
-            remainder = buffer
-            while True:
-                decoded = remainder.decode("utf-8", errors="replace")
-                for terminator in ("\n", "\r"):
-                    if terminator in decoded:
-                        line, _, rest = decoded.partition(terminator)
-                        lines.append(line + terminator)
-                        remainder = rest.encode("utf-8")
-                        break
-                else:
-                    break
-            return "".join(lines), remainder
-        return "", buffer
+        if "\n" not in text:
+            return "", buffer
+
+        lines: list[str] = []
+        remainder = buffer
+        while True:
+            decoded = remainder.decode("utf-8", errors="replace")
+            if "\n" not in decoded:
+                break
+            line, _, rest = decoded.partition("\n")
+            lines.append(line + "\n")
+            remainder = rest.encode("utf-8")
+        return "".join(lines), remainder
 
     def _handle_line(self, raw_line: str) -> str | None:
         line = raw_line.strip()

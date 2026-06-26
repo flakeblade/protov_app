@@ -1,4 +1,5 @@
 import type { SerialTransport } from './types'
+import { formatScpiCommand, takeScpiLine } from './scpi-lines'
 
 const DEFAULT_BRIDGE_URL = 'ws://127.0.0.1:8765'
 
@@ -61,8 +62,7 @@ export class WebBridgeTransport implements SerialTransport {
   }
 
   async write(command: string): Promise<void> {
-    const payload = command.endsWith('\n') ? command : `${command}\n`
-    this.socket.send(payload)
+    this.socket.send(formatScpiCommand(command))
   }
 
   async query(command: string, timeoutMs = 3000): Promise<string> {
@@ -80,10 +80,9 @@ export class WebBridgeTransport implements SerialTransport {
 
   private flushLines() {
     while (true) {
-      const match = this.lineBuffer.match(/^(.*?)\r?\n/)
-      if (!match) break
-      const line = match[1].trim()
-      this.lineBuffer = this.lineBuffer.slice(match[0].length)
+      const { line, rest } = takeScpiLine(this.lineBuffer)
+      if (line === null) break
+      this.lineBuffer = rest
 
       const [firstKey] = this.pending.keys()
       if (!firstKey) continue
