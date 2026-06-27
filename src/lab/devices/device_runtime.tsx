@@ -22,6 +22,7 @@ import {
 import { EMPTY_TELEMETRY, pollDeviceTelemetry } from './telemetry_io'
 import { MAX_DEVICES, acquireColorSlot, rememberColorSlot } from './device-colors'
 import { adjustChannelForActive, PendingChannelOutput } from './channel-output-pending'
+import { PendingDisplaySettings } from './display-settings-pending'
 import {
   displayEqual,
   patchDeviceList,
@@ -47,6 +48,7 @@ class DeviceRuntime {
   private devices: LabDevice[] = deviceSession.list()
   private readonly listeners = new Set<Listener>()
   private readonly pendingOutput = new PendingChannelOutput()
+  private readonly pendingDisplay = new PendingDisplaySettings()
   private readonly serialColorSlots = new Map<string, number>()
   private readonly pollFailures = new Map<string, number>()
   private readonly disconnecting = new Set<string>()
@@ -149,6 +151,7 @@ class DeviceRuntime {
     this.unregisterDeviceLink(deviceId)
     this.pollFailures.delete(deviceId)
     this.pendingOutput.clearDevice(deviceId)
+    this.pendingDisplay.clearDevice(deviceId)
 
     try {
       await device.transport.close()
@@ -226,8 +229,9 @@ class DeviceRuntime {
 
           const mergedChannels = this.pendingOutput.merge(device.id, result.channels)
           const channels = reconcileChannels(device.channels, mergedChannels)
+          const mergedDisplay = this.pendingDisplay.merge(device.id, result.display)
           const telemetryChanged = !telemetryEqual(device.telemetry, result.telemetry)
-          const displayChanged = !displayEqual(device.display, result.display)
+          const displayChanged = !displayEqual(device.display, mergedDisplay)
 
           if (channels === device.channels && !telemetryChanged && !displayChanged) return device
 
@@ -236,7 +240,7 @@ class DeviceRuntime {
             ...device,
             channels,
             telemetry: telemetryChanged ? result.telemetry : device.telemetry,
-            display: displayChanged ? result.display : device.display,
+            display: displayChanged ? mergedDisplay : device.display,
           }
         })
         return changed ? next : current
@@ -474,6 +478,7 @@ class DeviceRuntime {
     if (!device) return
 
     const prior = device.display.lcdBrightness
+    this.pendingDisplay.set(deviceId, 'lcdBrightness', value)
     this.updateDevice(deviceId, (entry) => ({
       ...entry,
       display: { ...entry.display, lcdBrightness: value },
@@ -482,6 +487,7 @@ class DeviceRuntime {
     try {
       await setLcdBrightness(device.transport, value)
     } catch {
+      this.pendingDisplay.clear(deviceId, 'lcdBrightness')
       this.updateDevice(deviceId, (entry) => ({
         ...entry,
         display: { ...entry.display, lcdBrightness: prior },
@@ -500,6 +506,7 @@ class DeviceRuntime {
     if (!device) return
 
     const prior = device.display.ledBrightness
+    this.pendingDisplay.set(deviceId, 'ledBrightness', value)
     this.updateDevice(deviceId, (entry) => ({
       ...entry,
       display: { ...entry.display, ledBrightness: value },
@@ -508,6 +515,7 @@ class DeviceRuntime {
     try {
       await setLedBrightness(device.transport, value)
     } catch {
+      this.pendingDisplay.clear(deviceId, 'ledBrightness')
       this.updateDevice(deviceId, (entry) => ({
         ...entry,
         display: { ...entry.display, ledBrightness: prior },

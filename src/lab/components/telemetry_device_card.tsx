@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   Badge,
   Button,
@@ -55,16 +55,10 @@ function CompactBadge({
 
 export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
   const { updateLcdBrightness, updateLedBrightness } = useDeviceStore()
-  const [lcdDraft, setLcdDraft] = useState(device.display.lcdBrightness)
-  const [ledDraft, setLedDraft] = useState(device.display.ledBrightness)
-
-  useEffect(() => {
-    setLcdDraft(device.display.lcdBrightness)
-  }, [device.display.lcdBrightness])
-
-  useEffect(() => {
-    setLedDraft(device.display.ledBrightness)
-  }, [device.display.ledBrightness])
+  const [lcdDraft, setLcdDraft] = useState<number | null>(null)
+  const [ledDraft, setLedDraft] = useState<number | null>(null)
+  const lcdValue = lcdDraft ?? device.display.lcdBrightness
+  const ledValue = ledDraft ?? device.display.ledBrightness
 
   const console = useSerialConsole({
     transport: device.transport,
@@ -151,24 +145,26 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
             DISPLAY
           </Text>
           <Stack gap="xs">
-            <Text size="xs">LCD brightness ({device.display.lcdBrightness})</Text>
+            <Text size="xs">LCD brightness ({lcdValue})</Text>
             <Slider
               min={0}
               max={255}
-              value={lcdDraft}
+              value={lcdValue}
               onChange={setLcdDraft}
               onChangeEnd={(value) => {
+                setLcdDraft(null)
                 void updateLcdBrightness(device.id, value)
               }}
               size="xs"
             />
-            <Text size="xs">LED brightness ({device.display.ledBrightness})</Text>
+            <Text size="xs">LED brightness ({ledValue})</Text>
             <Slider
               min={0}
               max={255}
-              value={ledDraft}
+              value={ledValue}
               onChange={setLedDraft}
               onChangeEnd={(value) => {
+                setLedDraft(null)
                 void updateLedBrightness(device.id, value)
               }}
               size="xs"
