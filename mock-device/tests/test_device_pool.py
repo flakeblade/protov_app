@@ -35,8 +35,8 @@ def test_pool_release_resets_device_state():
     acquired = pool.acquire()
     assert acquired is not None
     index, device = acquired
-    device.handle("CH1:COLR YELLOW")
-    assert device.handle("CH1:COLR?").response == "YELLOW"
+    device.handle("CH1:COLR 255,255,0")
+    assert device.handle("CH1:COLR?").response == "255,255,0"
     pool.release(index)
     fresh = pool._devices[index]
-    assert fresh.handle("CH1:COLR?").response == "RED"
+    assert fresh.handle("CH1:COLR?").response == "234,67,53"

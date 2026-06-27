@@ -7,7 +7,7 @@ from protov_scpi.state_loader import load_state_file
 def test_idn():
     device = ScpiDevice()
     result = device.handle("*IDN?")
-    assert result.response == "Flake-Blade,ProtoV-MINI,550e8400,1.0.0,A.1"
+    assert result.response == "FBRD Inc.,ProtoV MINI,550e8400,1.0.0,A.1"
 
 
 def test_voltage_set_and_query():
@@ -45,19 +45,35 @@ def test_syst_err_queue():
 
 def test_channel_color_set_and_query():
     device = ScpiDevice()
-    assert device.handle("CH1:COLR?").response == "RED"
-    assert device.handle("CH2:COLR?").response == "BLUE"
-    device.handle("CH1:COLR YELLOW")
-    device.handle("CH2:COLR TEAL")
-    assert device.handle("CH1:COLR?").response == "YELLOW"
-    assert device.handle("CH2:COLR?").response == "TEAL"
+    assert device.handle("CH1:COLR?").response == "234,67,53"
+    assert device.handle("CH2:COLR?").response == "66,133,244"
+    device.handle("CH1:COLR 255,255,0")
+    device.handle("CH2:COLR 0,255,255")
+    assert device.handle("CH1:COLR?").response == "255,255,0"
+    assert device.handle("CH2:COLR?").response == "0,255,255"
 
 
 def test_channel_color_invalid():
     device = ScpiDevice()
-    result = device.handle("CH1:COLR MAGENTA")
+    result = device.handle("CH1:COLR 256,0,0")
     assert result.error is not None
     assert device.handle("SYST:ERR?").response.startswith("-221")
+
+
+def test_brightness_set_and_query():
+    device = ScpiDevice()
+    assert device.handle("LCD:BRIG?").response == "128"
+    assert device.handle("LED:BRIG?").response == "255"
+    device.handle("LCD:BRIG 200")
+    device.handle("LED:BRIG 64")
+    assert device.handle("LCD:BRIG?").response == "200"
+    assert device.handle("LED:BRIG?").response == "64"
+
+
+def test_brightness_invalid():
+    device = ScpiDevice()
+    result = device.handle("LCD:BRIG 300")
+    assert result.error is not None
 
 
 def test_telemetry_snapshot():

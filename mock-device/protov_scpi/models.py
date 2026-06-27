@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from .colors import DEFAULT_CHANNEL_RGB, DEFAULT_LCD_BRIGHTNESS, DEFAULT_LED_BRIGHTNESS
+
 ChannelId = Literal["CH1", "CH2"]
 
 
@@ -13,6 +15,11 @@ class MeasuredValues:
     power: float | None = None
 
 
+def _default_channel(channel_id: str, **overrides) -> "ChannelState":
+    r, g, b = DEFAULT_CHANNEL_RGB[channel_id]
+    return ChannelState(color_r=r, color_g=g, color_b=b, **overrides)
+
+
 @dataclass
 class ChannelState:
     voltage_set: float = 0.0
@@ -21,7 +28,9 @@ class ChannelState:
     ocp: float = 1.0
     output_on: bool = False
     prot_latched: bool = False
-    color: str = "RED"
+    color_r: int = 234
+    color_g: int = 67
+    color_b: int = 53
     load_ratio: float = 0.85
     voltage_droop: float | None = None
     measured: MeasuredValues = field(default_factory=MeasuredValues)
@@ -56,23 +65,25 @@ class DeviceState:
     fw_version: str = "1.0.0"
     hw_version: str = "A.1"
     remote: bool = True
+    lcd_brightness: int = DEFAULT_LCD_BRIGHTNESS
+    led_brightness: int = DEFAULT_LED_BRIGHTNESS
     channels: dict[str, ChannelState] = field(
         default_factory=lambda: {
-            "CH1": ChannelState(
+            "CH1": _default_channel(
+                "CH1",
                 voltage_set=3.3,
                 current_set=0.5,
                 ovp=18.0,
                 ocp=1.0,
                 output_on=False,
-                color="RED",
             ),
-            "CH2": ChannelState(
+            "CH2": _default_channel(
+                "CH2",
                 voltage_set=5.0,
                 current_set=2.0,
                 ovp=6.0,
                 ocp=3.0,
                 output_on=False,
-                color="BLUE",
             ),
         }
     )
@@ -81,22 +92,24 @@ class DeviceState:
 
     def default_reset(self) -> None:
         self.remote = True
+        self.lcd_brightness = DEFAULT_LCD_BRIGHTNESS
+        self.led_brightness = DEFAULT_LED_BRIGHTNESS
         self.channels = {
-            "CH1": ChannelState(
+            "CH1": _default_channel(
+                "CH1",
                 voltage_set=3.3,
                 current_set=0.5,
                 ovp=18.0,
                 ocp=1.0,
                 output_on=False,
-                color="RED",
             ),
-            "CH2": ChannelState(
+            "CH2": _default_channel(
+                "CH2",
                 voltage_set=5.0,
                 current_set=2.0,
                 ovp=6.0,
                 ocp=3.0,
                 output_on=False,
-                color="BLUE",
             ),
         }
         self.error_queue.clear()
@@ -118,7 +131,9 @@ class DeviceState:
                 ocp=state.ocp,
                 output_on=state.output_on,
                 prot_latched=state.prot_latched,
-                color=state.color,
+                color_r=state.color_r,
+                color_g=state.color_g,
+                color_b=state.color_b,
                 load_ratio=state.load_ratio,
                 voltage_droop=state.voltage_droop,
                 measured=MeasuredValues(

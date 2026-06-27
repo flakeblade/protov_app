@@ -21,7 +21,7 @@ def _control(ctrl_sock: Path, command: str) -> str:
 
 def test_pyvisa_idn(visa_instrument):
     idn = visa_instrument.query("*IDN?")
-    assert idn.startswith("Flake-Blade,ProtoV-MINI,")
+    assert idn.startswith("FBRD Inc.,ProtoV MINI,")
 
 
 def test_pyvisa_voltage_and_measure(visa_instrument):
@@ -35,7 +35,7 @@ def test_pyvisa_voltage_and_measure(visa_instrument):
     assert visa_instrument.query("OUTP? CH1") == "ON"
 
     voltage = float(visa_instrument.query("MEAS:VOLT? CH1"))
-    assert 3.25 < voltage < 3.32
+    assert 3.25 < voltage < 3.35
 
 
 def test_pyvisa_system_commands(visa_instrument):

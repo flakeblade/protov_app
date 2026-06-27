@@ -4,7 +4,7 @@ import re
 import threading
 from dataclasses import dataclass
 
-from .colors import normalize_color_name
+from .colors import format_rgb, parse_brightness, parse_rgb
 from .models import ChannelState, DeviceState
 from .state_loader import normalize_command, parse_channel_token
 from .telemetry import (
@@ -107,13 +107,32 @@ class ScpiDevice:
                 return CommandResult(response=self.VOLT_FMT.format(ch_state.ovp))
             if param == "OCP":
                 return CommandResult(response=self.CURR_FMT.format(ch_state.ocp))
-            return CommandResult(response=ch_state.color)
+            return CommandResult(
+                response=format_rgb(ch_state.color_r, ch_state.color_g, ch_state.color_b)
+            )
 
-        color_match = re.fullmatch(r"(CH[12]):COLR ([A-Z]+)", command)
+        color_match = re.fullmatch(r"(CH[12]):COLR (\d+,\d+,\d+)", command)
         if color_match:
-            channel, color_name = color_match.groups()
+            channel, rgb_str = color_match.groups()
             ch_state = self._channel(channel)
-            ch_state.color = normalize_color_name(color_name)
+            r, g, b = parse_rgb(rgb_str)
+            ch_state.color_r, ch_state.color_g, ch_state.color_b = r, g, b
+            return CommandResult()
+
+        if command == "LCD:BRIG?":
+            return CommandResult(response=str(self.state.lcd_brightness))
+
+        lcd_match = re.fullmatch(r"LCD:BRIG (\d+)", command)
+        if lcd_match:
+            self.state.lcd_brightness = parse_brightness(lcd_match.group(1))
+            return CommandResult()
+
+        if command == "LED:BRIG?":
+            return CommandResult(response=str(self.state.led_brightness))
+
+        led_match = re.fullmatch(r"LED:BRIG (\d+)", command)
+        if led_match:
+            self.state.led_brightness = parse_brightness(led_match.group(1))
             return CommandResult()
 
         set_match = re.fullmatch(r"(CH[12]):(VOLT|CURR|OVP|OCP) ([-+]?\d*\.?\d+)", command)

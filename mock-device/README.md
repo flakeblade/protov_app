@@ -78,7 +78,8 @@ PROTOV_MOCK_WEB_BRIDGE=0 PROTOV_MOCK_SERVER_PORT=/tmp/protov-mini-peer ./scripts
 | Common | `*IDN?`, `*RST`, `*SAV <1-9>`, `*RCL <1-9>`, `*DEL <1-9>` |
 | Measure | `MEAS:CURR? CHn`, `MEAS:VOLT? CHn`, `MEAS:POW? CHn` |
 | Setpoints | `CHn:VOLT`, `CHn:CURR`, `CHn:OVP`, `CHn:OCP` (+ `?` queries) |
-| Appearance | `CHn:COLR <name>`, `CHn:COLR?` — colors: `RED`, `BLUE`, `YELLOW`, `GREEN`, `ORANGE`, `TEAL`, `VIOLET`, `PINK`, `CYAN`, `LIME`, `GRAY` (default CH1=`RED`, CH2=`BLUE`) |
+| Appearance | `CHn:COLR r,g,b`, `CHn:COLR?` — RGB u8 triplet (default CH1=`234,67,53`, CH2=`66,133,244`) |
+| Display | `LCD:BRIG n`, `LCD:BRIG?`, `LED:BRIG n`, `LED:BRIG?` — brightness u8 (0–255) |
 | Output | `OUTP CHn,ON\|OFF`, `OUTP? CHn`, `OUTP:RESET:PROT [CHn]` |
 | System | `SYST:ERR?`, `SYST:VERS?`, `SYST:LOC`, `SYST:REM` |
 | Telemetry | `TELEM?`, `TEMP? CHA\|CHB\|MCU`, `INP?`, `DIAG?` |
@@ -97,7 +98,7 @@ Register dump responses use `|` as a line separator (the web app splits these fo
 `*IDN?` returns:
 
 ```
-Flake-Blade,ProtoV-MINI,<serial>,<fw_version>,<hw_version>
+FBRD Inc.,ProtoV MINI,<serial>,<fw_version>,<hw_version>
 ```
 
 ## Preset states (JSON / YAML)

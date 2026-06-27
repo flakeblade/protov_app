@@ -82,7 +82,7 @@ def test_web_bridge_idn(bridge_server: str):
             return (await ws.recv()).strip()
 
     idn = asyncio.run(query_idn())
-    assert idn == "Flake-Blade,ProtoV-MINI,550e8400,1.0.0,A.1"
+    assert idn == "FBRD Inc.,ProtoV MINI,550e8400,1.0.0,A.1"
 
 
 def test_web_bridge_multiple_devices(bridge_server: str):

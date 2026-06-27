@@ -3,8 +3,7 @@ from __future__ import annotations
 import threading
 
 from .device import ScpiDevice
-from .models import ChannelState, DeviceState
-from .colors import DEFAULT_CHANNEL_COLORS
+from .models import DeviceState
 
 MAX_MOCK_DEVICES = 4
 
@@ -16,33 +15,11 @@ MOCK_DEVICE_PROFILES: tuple[dict[str, str], ...] = (
 )
 
 
-def _default_channels() -> dict[str, ChannelState]:
-    return {
-        "CH1": ChannelState(
-            voltage_set=3.3,
-            current_set=0.5,
-            ovp=18.0,
-            ocp=1.0,
-            output_on=False,
-            color=DEFAULT_CHANNEL_COLORS["CH1"],
-        ),
-        "CH2": ChannelState(
-            voltage_set=5.0,
-            current_set=2.0,
-            ovp=6.0,
-            ocp=3.0,
-            output_on=False,
-            color=DEFAULT_CHANNEL_COLORS["CH2"],
-        ),
-    }
-
-
 def create_device_state(profile: dict[str, str]) -> DeviceState:
     return DeviceState(
         serial=profile["serial"],
         fw_version=profile["fw_version"],
         hw_version=profile["hw_version"],
-        channels=_default_channels(),
     )
 
 
