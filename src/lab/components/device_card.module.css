@@ -5,10 +5,16 @@
   flex-direction: column;
 }
 
-.imagePlaceholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.imageSection {
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}
+
+.deviceImage {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  object-position: center;
 }
 
 .section {

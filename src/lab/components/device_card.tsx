@@ -14,6 +14,7 @@ import type { Icon } from '@tabler/icons-react'
 import type { Channel } from './channel_chip'
 import { ChannelChip } from './channel_chip'
 import { useLabView } from '../lab_view'
+import protovMiniImage from '../../assets/img/protov_mini.jpg'
 import classes from './device_card.module.css'
 
 export interface DeviceBadge {
@@ -34,20 +35,6 @@ export interface DeviceCardProps {
   onChannelToggle?: (identifier: string) => void
   hideButton?: boolean
   children?: ReactNode
-}
-
-function DeviceImagePlaceholder({ name }: { name: string }) {
-  return (
-    <Box
-      h={150}
-      bg="light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5))"
-      className={classes.imagePlaceholder}
-    >
-      <Text c="dimmed" size="sm">
-        {name}
-      </Text>
-    </Box>
-  )
 }
 
 export function DeviceCard({
@@ -82,8 +69,8 @@ export function DeviceCard({
 
   return (
     <Card shadow="sm" padding="lg" radius="md" withBorder className={classes.cardShell}>
-      <Card.Section>
-        <DeviceImagePlaceholder name={name} />
+      <Card.Section className={classes.imageSection}>
+        <img src={protovMiniImage} alt={name} className={classes.deviceImage} />
       </Card.Section>
 
       <Group justify="space-between" mt="md" mb="xs">
