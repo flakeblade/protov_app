@@ -7,6 +7,7 @@ export function channelEqual(a: Channel, b: Channel): boolean {
   return (
     a.identifier === b.identifier &&
     a.color === b.color &&
+    a.mode === b.mode &&
     a.voltage === b.voltage &&
     a.current === b.current &&
     a.measuredVoltage === b.measuredVoltage &&

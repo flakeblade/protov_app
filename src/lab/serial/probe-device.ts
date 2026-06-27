@@ -50,6 +50,7 @@ export async function probePowerSupply(transport: SerialTransport): Promise<Prob
     ovp: 18,
     ocp: 1,
     active: false,
+    mode: 'OFF' as const,
   }))
   const channels = await pollDeviceChannels(transport, prior)
 

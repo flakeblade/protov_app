@@ -1,9 +1,20 @@
 import { notifications } from '@mantine/notifications'
-import { IconPlugConnected, IconPlugConnectedX } from '@tabler/icons-react'
+import {
+  IconActivity,
+  IconBolt,
+  IconPlugConnected,
+  IconPlugConnectedX,
+  IconTemperature,
+} from '@tabler/icons-react'
 
 import type { Channel } from '../components/channel_chip'
 
 import type { ChannelColor } from './channel-colors'
+import {
+  FAULT_NOTIFICATIONS,
+  isChannelFaultMode,
+  type ChannelFaultMode,
+} from './channel-mode'
 
 import {
   DEFAULT_DISPLAY_SETTINGS,
@@ -44,11 +55,23 @@ type DisconnectReason = 'manual' | 'lost'
 
 const POLL_FAILURES_BEFORE_LOST = 3
 
+function faultNotificationIcon(mode: ChannelFaultMode) {
+  switch (mode) {
+    case 'OCP':
+      return <IconActivity size={18} />
+    case 'OVP':
+      return <IconBolt size={18} />
+    case 'TEMP':
+      return <IconTemperature size={18} />
+  }
+}
+
 class DeviceRuntime {
   private devices: LabDevice[] = deviceSession.list()
   private readonly listeners = new Set<Listener>()
   private readonly pendingOutput = new PendingChannelOutput()
   private readonly pendingDisplay = new PendingDisplaySettings()
+  private readonly knownChannelModes = new Map<string, string>()
   private readonly serialColorSlots = new Map<string, number>()
   private readonly pollFailures = new Map<string, number>()
   private readonly disconnecting = new Set<string>()
@@ -152,6 +175,11 @@ class DeviceRuntime {
     this.pollFailures.delete(deviceId)
     this.pendingOutput.clearDevice(deviceId)
     this.pendingDisplay.clearDevice(deviceId)
+    for (const key of [...this.knownChannelModes.keys()]) {
+      if (key.startsWith(`${deviceId}:`)) {
+        this.knownChannelModes.delete(key)
+      }
+    }
 
     try {
       await device.transport.close()
@@ -179,6 +207,34 @@ class DeviceRuntime {
   handleConnectionLost(deviceId: string): void {
     if (this.disconnecting.has(deviceId)) return
     void this.removeDevice(deviceId, 'lost')
+  }
+
+  private notifyChannelFaults(
+    device: LabDevice,
+    previousChannels: Channel[],
+    nextChannels: Channel[],
+  ): void {
+    for (const channel of nextChannels) {
+      const key = `${device.id}:${channel.identifier}`
+      const previous = previousChannels.find((entry) => entry.identifier === channel.identifier)
+      const priorMode = previous?.mode ?? this.knownChannelModes.get(key)
+
+      if (
+        isChannelFaultMode(channel.mode) &&
+        priorMode !== channel.mode
+      ) {
+        const details = FAULT_NOTIFICATIONS[channel.mode]
+        notifications.show({
+          id: `channel-fault-${device.id}-${channel.identifier}-${channel.mode}`,
+          title: `${details.title} — Channel ${channel.identifier}`,
+          message: details.message(device.name, channel.identifier),
+          color: channel.color,
+          icon: faultNotificationIcon(channel.mode),
+        })
+      }
+
+      this.knownChannelModes.set(key, channel.mode)
+    }
   }
 
   private async pollAll(): Promise<void> {
@@ -232,6 +288,10 @@ class DeviceRuntime {
           const mergedDisplay = this.pendingDisplay.merge(device.id, result.display)
           const telemetryChanged = !telemetryEqual(device.telemetry, result.telemetry)
           const displayChanged = !displayEqual(device.display, mergedDisplay)
+
+          if (channels !== device.channels) {
+            this.notifyChannelFaults(device, device.channels, channels)
+          }
 
           if (channels === device.channels && !telemetryChanged && !displayChanged) return device
 
@@ -327,6 +387,10 @@ class DeviceRuntime {
           transport,
         },
       ])
+
+      for (const channel of channels) {
+        this.knownChannelModes.set(`${probed.serialNumber}:${channel.identifier}`, channel.mode)
+      }
 
       const connected = this.devices.find((entry) => entry.id === probed.serialNumber)
       if (connected) {

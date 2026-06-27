@@ -23,6 +23,12 @@
   line-height: 1.2;
 }
 
+.modeTagFault {
+  color: var(--mantine-color-red-7);
+  border-color: var(--mantine-color-red-4);
+  background: light-dark(var(--mantine-color-red-0), var(--mantine-color-red-9));
+}
+
 .readingBox {
   display: flex;
   align-items: baseline;

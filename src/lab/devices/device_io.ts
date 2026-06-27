@@ -11,6 +11,7 @@ import {
   type ChannelIdentifier,
 } from './channel-colors'
 import { colorPairForSlot, defaultColorForChannel } from './device-colors'
+import { parseChannelMode, type ChannelHardwareMode } from './channel-mode'
 
 const SCPI_CHANNELS = ['CH1', 'CH2'] as const
 
@@ -67,6 +68,14 @@ async function queryChannelColor(
   return rgbToNearestChannelColor(rgb.r, rgb.g, rgb.b)
 }
 
+async function queryChannelMode(
+  transport: SerialTransport,
+  scpiChannel: string,
+): Promise<ChannelHardwareMode> {
+  const raw = (await transport.query(`${scpiChannel}:MODE?`)).trim()
+  return parseChannelMode(raw)
+}
+
 async function readChannelState(
   transport: SerialTransport,
   scpiChannel: (typeof SCPI_CHANNELS)[number],
@@ -93,9 +102,17 @@ async function readChannelState(
     ? await queryNumber(transport, `MEAS:CURR? ${scpiChannel}`)
     : 0
 
+  let mode: ChannelHardwareMode
+  try {
+    mode = await queryChannelMode(transport, scpiChannel)
+  } catch {
+    mode = prior?.mode ?? (outputOn ? 'CV' : 'OFF')
+  }
+
   return {
     identifier,
     color,
+    mode,
     voltage: outputOn ? measuredVoltage : voltageSet,
     current: outputOn ? measuredCurrent : currentSet,
     measuredVoltage,

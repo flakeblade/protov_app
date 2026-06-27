@@ -22,6 +22,11 @@ import { useNavigate } from 'react-router-dom'
 import type { Channel } from '../components/channel_chip'
 import { ChannelColorPicker } from '../components/channel_color_picker'
 import type { ChannelColor } from '../devices/channel-colors'
+import {
+  isChannelFaultMode,
+  MODE_TOOLTIPS,
+  type ChannelHardwareMode,
+} from '../devices/channel-mode'
 import { useDeviceStore } from '../devices/device_store'
 import type { SetpointParam } from '../devices/device_io'
 import { CURRENT_MAX, VOLTAGE_MAX } from '../devices/device_io'
@@ -29,21 +34,6 @@ import { useLabView } from '../lab_view'
 import classes from './controls.module.css'
 
 const DECIMALS = 3
-
-type RegulationMode = 'CV' | 'CC'
-
-const REGULATION_TOOLTIPS: Record<RegulationMode, string> = {
-  CV: 'Constant voltage — output holds target voltage',
-  CC: 'Constant current — output holds target current',
-}
-
-function regulationMode(channel: Channel): RegulationMode {
-  if (!channel.active) return 'CV'
-  if (channel.currentSet > 0 && channel.measuredCurrent >= channel.currentSet * 0.98) {
-    return 'CC'
-  }
-  return 'CV'
-}
 
 export function ControlsPage() {
   const navigate = useNavigate()
@@ -270,7 +260,8 @@ function ChannelCard({
 }: ChannelCardProps) {
   const theme = useMantineTheme()
   const { isEngineering } = useLabView()
-  const mode = regulationMode(channel)
+  const mode: ChannelHardwareMode = channel.mode
+  const modeIsFault = isChannelFaultMode(mode)
   const borderColor = theme.colors[channel.color as MantineColor]?.[5] ?? theme.colors.gray[5]
   const livePower = channel.measuredVoltage * channel.measuredCurrent
 
@@ -296,8 +287,11 @@ function ChannelCard({
         </Group>
 
         <Group gap="sm">
-          <Tooltip label={REGULATION_TOOLTIPS[mode]}>
-            <Text component="span" className={classes.modeTag}>
+          <Tooltip label={MODE_TOOLTIPS[mode]}>
+            <Text
+              component="span"
+              className={`${classes.modeTag} ${modeIsFault ? classes.modeTagFault : ''}`}
+            >
               {mode}
             </Text>
           </Tooltip>
