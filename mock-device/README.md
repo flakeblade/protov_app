@@ -78,6 +78,7 @@ PROTOV_MOCK_WEB_BRIDGE=0 PROTOV_MOCK_SERVER_PORT=/tmp/protov-mini-peer ./scripts
 | Common | `*IDN?`, `*RST`, `*SAV <1-9>`, `*RCL <1-9>`, `*DEL <1-9>` |
 | Measure | `MEAS:CURR? CHn`, `MEAS:VOLT? CHn`, `MEAS:POW? CHn` |
 | Setpoints | `CHn:VOLT`, `CHn:CURR`, `CHn:OVP`, `CHn:OCP` (+ `?` queries) |
+| Mode | `CHn:MODE?` → `OFF`, `CV`, `CC`, `SHORT`, `TEMP`, `OCP`, `OVP` |
 | Appearance | `CHn:COLR r,g,b`, `CHn:COLR?` — RGB u8 triplet (default CH1=`234,67,53`, CH2=`66,133,244`) |
 | Display | `LCD:BRIG n`, `LCD:BRIG?`, `LED:BRIG n`, `LED:BRIG?` — brightness u8 (0–255) |
 | Output | `OUTP CHn,ON\|OFF`, `OUTP? CHn`, `OUTP:RESET:PROT [CHn]` |

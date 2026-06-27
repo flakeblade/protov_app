@@ -76,6 +76,37 @@ def test_brightness_invalid():
     assert result.error is not None
 
 
+def test_channel_mode_query():
+    device = ScpiDevice()
+    assert device.handle("CH1:MODE?").response == "OFF"
+    assert device.handle("CH2:MODE?").response == "OFF"
+    device.handle("OUTP CH1,ON")
+    mode = device.handle("CH1:MODE?").response
+    assert mode in ("CV", "CC")
+
+
+def test_channel_mode_cc_when_current_limited():
+    device = ScpiDevice()
+    device.state.channels["CH1"].load_ratio = 1.0
+    device.handle("CH1:CURR 0.5")
+    device.handle("CH1:VOLT 3.3")
+    device.handle("OUTP CH1,ON")
+    assert device.handle("CH1:MODE?").response == "CC"
+
+
+def test_channel_mode_protection_tripped(mock_root):
+    state = load_state_file(mock_root / "states" / "protection-tripped.yaml")
+    device = ScpiDevice(state)
+    assert device.handle("CH1:MODE?").response == "OVP"
+    assert device.handle("CH2:MODE?").response in ("OFF", "OVP", "OCP", "TEMP")
+
+
+def test_channel_mode_invalid():
+    device = ScpiDevice()
+    result = device.handle("CH1:MODE 1")
+    assert result.error is not None
+
+
 def test_telemetry_snapshot():
     device = ScpiDevice()
     result = device.handle("TELEM?")

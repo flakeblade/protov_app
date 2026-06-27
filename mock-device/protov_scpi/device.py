@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .colors import format_rgb, parse_brightness, parse_rgb
 from .models import ChannelState, DeviceState
 from .state_loader import normalize_command, parse_channel_token
+from .protection import query_channel_mode
 from .telemetry import (
     format_ina226_dump,
     format_tps55289_dump,
@@ -95,7 +96,7 @@ class ScpiDevice:
                 return CommandResult(response=self.VOLT_FMT.format(ch_state.measured_voltage(channel)))
             return CommandResult(response=self.POW_FMT.format(ch_state.measured_power(channel)))
 
-        query_match = re.fullmatch(r"(CH[12]):(VOLT|CURR|OVP|OCP|COLR)\?", command)
+        query_match = re.fullmatch(r"(CH[12]):(VOLT|CURR|OVP|OCP|COLR|MODE)\?", command)
         if query_match:
             channel, param = query_match.groups()
             ch_state = self._channel(channel)
@@ -107,6 +108,9 @@ class ScpiDevice:
                 return CommandResult(response=self.VOLT_FMT.format(ch_state.ovp))
             if param == "OCP":
                 return CommandResult(response=self.CURR_FMT.format(ch_state.ocp))
+            if param == "MODE":
+                mode = query_channel_mode(channel, ch_state, self.state)
+                return CommandResult(response=mode)
             return CommandResult(
                 response=format_rgb(ch_state.color_r, ch_state.color_g, ch_state.color_b)
             )
@@ -165,11 +169,14 @@ class ScpiDevice:
         if command == "OUTP:RESET:PROT":
             for ch_state in self.state.channels.values():
                 ch_state.prot_latched = False
+                ch_state.latched_mode = None
             return CommandResult()
 
         reset_prot = re.fullmatch(r"OUTP:RESET:PROT (CH[12])", command)
         if reset_prot:
-            self._channel(reset_prot.group(1)).prot_latched = False
+            ch_state = self._channel(reset_prot.group(1))
+            ch_state.prot_latched = False
+            ch_state.latched_mode = None
             return CommandResult()
 
         if command == "SYST:ERR?":

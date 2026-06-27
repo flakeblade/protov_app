@@ -28,6 +28,7 @@ class ChannelState:
     ocp: float = 1.0
     output_on: bool = False
     prot_latched: bool = False
+    latched_mode: str | None = None
     color_r: int = 234
     color_g: int = 67
     color_b: int = 53
@@ -131,6 +132,7 @@ class DeviceState:
                 ocp=state.ocp,
                 output_on=state.output_on,
                 prot_latched=state.prot_latched,
+                latched_mode=state.latched_mode,
                 color_r=state.color_r,
                 color_g=state.color_g,
                 color_b=state.color_b,

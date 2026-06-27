@@ -45,6 +45,7 @@ def _parse_channel(data: dict[str, Any], channel_key: str) -> ChannelState:
         ocp=float(data.get("ocp", 1.0)),
         output_on=bool(data.get("output", data.get("output_on", False))),
         prot_latched=bool(data.get("prot_latched", False)),
+        latched_mode=data.get("latched_mode"),
         color_r=color_r,
         color_g=color_g,
         color_b=color_b,
@@ -121,6 +122,7 @@ def dump_state(state: DeviceState) -> dict[str, Any]:
                 "ocp": ch_state.ocp,
                 "output": ch_state.output_on,
                 "prot_latched": ch_state.prot_latched,
+                "latched_mode": ch_state.latched_mode,
                 "color": [ch_state.color_r, ch_state.color_g, ch_state.color_b],
                 "measured": {
                     "voltage": ch_state.measured_voltage(ch),
