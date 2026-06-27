@@ -1,4 +1,4 @@
-import type { SerialTransport } from './types'
+import type { ConnectionLostHandler, SerialTransport } from './types'
 import { formatScpiCommand, takeScpiLine } from './scpi-lines'
 
 const DEFAULT_BRIDGE_URL = 'ws://127.0.0.1:8765'
@@ -29,6 +29,8 @@ function waitForWebSocket(url: string, timeoutMs: number): Promise<WebSocket> {
 export class WebBridgeTransport implements SerialTransport {
   readonly label = 'ProtoV Mock (bridge)'
   private socket: WebSocket
+  private intentionalClose = false
+  private connectionLostHandlers = new Set<ConnectionLostHandler>()
   private pending = new Map<
     string,
     { resolve: (value: string) => void; reject: (reason: Error) => void; timer: number }
@@ -47,7 +49,19 @@ export class WebBridgeTransport implements SerialTransport {
         pending.reject(new Error('Mock device bridge disconnected'))
       }
       this.pending.clear()
+      if (!this.intentionalClose) {
+        for (const handler of this.connectionLostHandlers) {
+          handler()
+        }
+      }
     })
+  }
+
+  onConnectionLost(handler: ConnectionLostHandler): () => void {
+    this.connectionLostHandlers.add(handler)
+    return () => {
+      this.connectionLostHandlers.delete(handler)
+    }
   }
 
   static async connect(url = getMockBridgeUrl()): Promise<WebBridgeTransport> {
@@ -58,6 +72,7 @@ export class WebBridgeTransport implements SerialTransport {
   async open(): Promise<void> {}
 
   async close(): Promise<void> {
+    this.intentionalClose = true
     this.socket.close()
   }
 

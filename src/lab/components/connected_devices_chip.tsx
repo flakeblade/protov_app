@@ -1,7 +1,7 @@
 import { Badge, Group, Stack } from '@mantine/core'
 import { IconTransfer, IconUsb } from '@tabler/icons-react'
 
-import { useDeviceStore } from '../devices/device_store'
+import { useDevices } from '../devices/device_store'
 import { MAX_DEVICES } from '../devices/device-colors'
 
 interface ConnectedDevicesChipProps {
@@ -9,7 +9,7 @@ interface ConnectedDevicesChipProps {
 }
 
 export function ConnectedDevicesChip({ stacked = false }: ConnectedDevicesChipProps) {
-  const { devices } = useDeviceStore()
+  const devices = useDevices()
   const count = devices.length
 
   const badges = (

@@ -1,6 +1,7 @@
 import { Button, Card, Code, Stack, Text } from '@mantine/core'
 import { IconPlugConnected } from '@tabler/icons-react'
 
+import { usesMockTransport } from '../serial/request-port'
 import classes from './device_card.module.css'
 
 interface ConnectDeviceCardProps {
@@ -10,6 +11,18 @@ interface ConnectDeviceCardProps {
   onConnect: () => void
 }
 
+function connectDescription(connectedCount: number, maxDevices: number): string {
+  if (usesMockTransport()) {
+    return `Connect up to ${maxDevices} mock devices over the built-in WebSocket bridge (${connectedCount}/${maxDevices} connected).`
+  }
+
+  if (import.meta.env.DEV) {
+    return `Connect up to ${maxDevices} ProtoV MINI devices via USB serial (${connectedCount}/${maxDevices} connected).`
+  }
+
+  return `Choose a serial port in the browser dialog to add a ProtoV MINI power supply (${connectedCount}/${maxDevices} connected).`
+}
+
 export function ConnectDeviceCard({
   connecting,
   connectedCount,
@@ -17,6 +30,8 @@ export function ConnectDeviceCard({
   onConnect,
 }: ConnectDeviceCardProps) {
   const atLimit = connectedCount >= maxDevices
+  const isMock = usesMockTransport()
+  const isDevWebSerial = import.meta.env.DEV && !isMock
 
   return (
     <Card
@@ -32,13 +47,15 @@ export function ConnectDeviceCard({
         <Stack align="center" gap={4}>
           <Text fw={600}>Connect a device</Text>
           <Text size="sm" c="dimmed" ta="center">
-            {import.meta.env.DEV
-              ? `Connect up to ${maxDevices} mock devices over the built-in WebSocket bridge (${connectedCount}/${maxDevices} connected).`
-              : `Choose a serial port in the browser dialog to add a ProtoV MINI power supply (${connectedCount}/${maxDevices} connected).`}
+            {connectDescription(connectedCount, maxDevices)}
           </Text>
-          {import.meta.env.DEV ? (
+          {isMock ? (
             <Text size="xs" c="dimmed" ta="center">
               Run <Code>npm run dev:mock</Code> in another terminal, then click Connect.
+            </Text>
+          ) : isDevWebSerial ? (
+            <Text size="xs" c="dimmed" ta="center">
+              Click Connect and choose your ProtoV MINI in the browser serial port dialog.
             </Text>
           ) : null}
         </Stack>

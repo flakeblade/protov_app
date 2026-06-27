@@ -103,6 +103,12 @@ export function GraphStoreProvider({ children }: GraphStoreProviderProps) {
   }, [activeKeys, bumpRender])
 
   useEffect(() => {
+    if (devices.length === 0 && recordingState === 'running') {
+      setRecordingState('stopped')
+    }
+  }, [devices.length, recordingState])
+
+  useEffect(() => {
     const next = new Map<string, Record<GraphMetric, TimeSeriesBuffer>>()
     for (const [key, series] of seriesMapRef.current) {
       next.set(key, trimSeriesToCount(series, bufferSampleCount))

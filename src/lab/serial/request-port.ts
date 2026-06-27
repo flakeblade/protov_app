@@ -2,8 +2,8 @@ import { PROTOV_WEB_SERIAL_FILTERS } from './constants'
 import { serialDebug, serialDebugTransportContext } from './serial-debug'
 import type { SerialTransport } from './types'
 import { formatUsbPortLabel, isWebSerialSupported } from './types'
+import { releaseSerialPort, WebSerialTransport } from './webserial-transport'
 import { WebBridgeTransport } from './web-bridge-transport'
-import { WebSerialTransport } from './webserial-transport'
 
 export type DevTransport = 'mock' | 'webserial'
 
@@ -44,6 +44,7 @@ async function requestWebSerialPort(): Promise<SerialTransport> {
 
   serialDebug('requestPort: opening Chrome picker', { filters: PROTOV_WEB_SERIAL_FILTERS })
   const port = await navigator.serial.requestPort({ filters: PROTOV_WEB_SERIAL_FILTERS })
+  await releaseSerialPort(port)
   const label = formatUsbPortLabel(port)
   serialDebug('requestPort: selected', { label, portInfo: port.getInfo() })
   return new WebSerialTransport(port, label)

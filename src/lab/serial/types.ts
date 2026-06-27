@@ -3,12 +3,16 @@ import {
   PROTOV_USB_VENDOR_ID,
 } from './constants'
 
+export type ConnectionLostHandler = () => void
+
 export interface SerialTransport {
   readonly label: string
   open(baudRate?: number): Promise<void>
   close(): Promise<void>
   query(command: string, timeoutMs?: number): Promise<string>
   write(command: string): Promise<void>
+  /** Fired on unplug or unexpected link drop. Returns an unsubscribe function. */
+  onConnectionLost?(handler: ConnectionLostHandler): () => void
 }
 
 export function isWebSerialSupported(): boolean {

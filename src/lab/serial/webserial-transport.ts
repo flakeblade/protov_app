@@ -2,7 +2,7 @@ import { DEFAULT_BAUD_RATE, USB_CDC_SETTLE_MS } from './constants'
 import { formatSerialOpenError } from './serial-errors'
 import { serialDebug, serialWarn } from './serial-debug'
 import { formatScpiCommand, takeScpiLine } from './scpi-lines'
-import type { SerialTransport } from './types'
+import type { ConnectionLostHandler, SerialTransport } from './types'
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
@@ -32,6 +32,10 @@ export class WebSerialTransport implements SerialTransport {
   private pendingLines: string[] = []
   private lineWaiters: LineWaiter[] = []
   private readLoopPromise: Promise<void> | null = null
+  private activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  private intentionalClose = false
+  private connectionLostHandlers = new Set<ConnectionLostHandler>()
+  private browserDisconnectListener: ((event: SerialPortDisconnectEvent) => void) | null = null
 
   constructor(port: SerialPort, label: string) {
     this.port = port
@@ -46,9 +50,11 @@ export class WebSerialTransport implements SerialTransport {
       return
     }
 
+    this.intentionalClose = false
+
     if (portIsOpen(this.port)) {
-      serialWarn('open: port was open externally, closing first')
-      await this.forceClosePort()
+      serialWarn('open: closing stale port handle before open')
+      await releaseSerialPort(this.port)
     }
 
     try {
@@ -61,8 +67,26 @@ export class WebSerialTransport implements SerialTransport {
         flowControl: 'none',
       })
     } catch (error) {
-      serialWarn('open: failed', error)
-      throw formatSerialOpenError(error)
+      if (error instanceof DOMException && error.name === 'InvalidStateError') {
+        serialWarn('open: InvalidStateError, releasing port and retrying once')
+        await releaseSerialPort(this.port)
+        try {
+          await this.port.open({
+            baudRate,
+            bufferSize: READ_BUFFER_SIZE,
+            dataBits: 8,
+            stopBits: 1,
+            parity: 'none',
+            flowControl: 'none',
+          })
+        } catch (retryError) {
+          serialWarn('open: retry failed', retryError)
+          throw formatSerialOpenError(retryError)
+        }
+      } else {
+        serialWarn('open: failed', error)
+        throw formatSerialOpenError(error)
+      }
     }
 
     // PyVISA asserts DTR on ASRL open; embassy-usb CDC wait_connection() needs it.
@@ -74,22 +98,27 @@ export class WebSerialTransport implements SerialTransport {
 
     serialDebug('open: waiting for USB CDC settle', { ms: USB_CDC_SETTLE_MS })
     await sleep(USB_CDC_SETTLE_MS)
+    this.attachBrowserDisconnectListener()
     serialDebug('open: success')
+  }
+
+  onConnectionLost(handler: ConnectionLostHandler): () => void {
+    this.connectionLostHandlers.add(handler)
+    return () => {
+      this.connectionLostHandlers.delete(handler)
+    }
   }
 
   async close(): Promise<void> {
     serialDebug('close', { label: this.label })
+    this.intentionalClose = true
+    this.detachBrowserDisconnectListener()
     this.isOpen = false
     this.rejectAllWaiters(new Error('Serial port closed'))
     this.readBuffer = ''
     this.pendingLines = []
 
-    if (this.port.readable) {
-      const reader = this.port.readable.getReader()
-      await reader.cancel().catch(() => undefined)
-      reader.releaseLock()
-    }
-
+    await this.cancelActiveReader()
     await this.readLoopPromise?.catch(() => undefined)
     this.readLoopPromise = null
     await this.forceClosePort()
@@ -138,12 +167,14 @@ export class WebSerialTransport implements SerialTransport {
     }
 
     const reader = this.port.readable.getReader()
+    this.activeReader = reader
     this.readLoopPromise = (async () => {
       try {
         while (this.isOpen) {
           const { value, done } = await reader.read()
           if (done) {
             serialWarn('readLoop: port stream closed')
+            void this.handleUnexpectedDisconnect()
             break
           }
           if (!value?.length) continue
@@ -161,9 +192,13 @@ export class WebSerialTransport implements SerialTransport {
         if (this.isOpen) {
           serialWarn('readLoop: failed', error)
           this.rejectAllWaiters(error instanceof Error ? error : new Error(String(error)))
+          void this.handleUnexpectedDisconnect()
         }
       } finally {
         reader.releaseLock()
+        if (this.activeReader === reader) {
+          this.activeReader = null
+        }
       }
     })()
   }
@@ -238,6 +273,55 @@ export class WebSerialTransport implements SerialTransport {
     this.lineWaiters = []
   }
 
+  private attachBrowserDisconnectListener(): void {
+    if (typeof navigator === 'undefined' || !('serial' in navigator)) return
+    if (this.browserDisconnectListener) return
+
+    this.browserDisconnectListener = (event) => {
+      if (event.port !== this.port) return
+      serialWarn('browser disconnect event', { label: this.label })
+      void this.handleUnexpectedDisconnect()
+    }
+    navigator.serial.addEventListener('disconnect', this.browserDisconnectListener)
+  }
+
+  private detachBrowserDisconnectListener(): void {
+    if (
+      this.browserDisconnectListener &&
+      typeof navigator !== 'undefined' &&
+      'serial' in navigator
+    ) {
+      navigator.serial.removeEventListener('disconnect', this.browserDisconnectListener)
+    }
+    this.browserDisconnectListener = null
+  }
+
+  private async handleUnexpectedDisconnect(): Promise<void> {
+    if (this.intentionalClose || !this.isOpen) return
+
+    serialWarn('connection lost', { label: this.label })
+    this.isOpen = false
+    this.detachBrowserDisconnectListener()
+    this.rejectAllWaiters(new Error('Serial port disconnected'))
+    this.readBuffer = ''
+    this.pendingLines = []
+
+    await this.cancelActiveReader()
+    await this.readLoopPromise?.catch(() => undefined)
+    this.readLoopPromise = null
+    await this.forceClosePort()
+
+    for (const handler of this.connectionLostHandlers) {
+      handler()
+    }
+  }
+
+  private async cancelActiveReader(): Promise<void> {
+    const reader = this.activeReader
+    if (!reader) return
+    await reader.cancel().catch(() => undefined)
+  }
+
   private async forceClosePort(): Promise<void> {
     if (!portIsOpen(this.port)) {
       return
@@ -248,5 +332,15 @@ export class WebSerialTransport implements SerialTransport {
     } catch {
       // Ignore close races when the OS already released the port.
     }
+  }
+}
+
+/** Release a Web Serial port handle so it can be opened again after disconnect/reconnect. */
+export async function releaseSerialPort(port: SerialPort): Promise<void> {
+  if (!portIsOpen(port)) return
+  try {
+    await port.close()
+  } catch {
+    // Port may already be closing after an unplug.
   }
 }

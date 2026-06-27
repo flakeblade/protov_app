@@ -23,7 +23,6 @@ export interface DeviceBadge {
 
 export interface DeviceCardProps {
   name: string
-  port: string
   description: string
   badges: DeviceBadge[]
   channels: Channel[]
@@ -31,6 +30,7 @@ export interface DeviceCardProps {
   buttonLabel?: string
   onSecondaryButtonClick?: () => void
   secondaryButtonLabel?: string
+  secondaryButtonLoading?: boolean
   onChannelToggle?: (identifier: string) => void
   hideButton?: boolean
   children?: ReactNode
@@ -52,7 +52,6 @@ function DeviceImagePlaceholder({ name }: { name: string }) {
 
 export function DeviceCard({
   name,
-  port,
   description,
   badges,
   channels,
@@ -60,6 +59,7 @@ export function DeviceCard({
   buttonLabel = 'Disable',
   onSecondaryButtonClick,
   secondaryButtonLabel,
+  secondaryButtonLoading = false,
   onChannelToggle,
   hideButton = false,
   children,
@@ -88,7 +88,6 @@ export function DeviceCard({
 
       <Group justify="space-between" mt="md" mb="xs">
         <Text fw={500}>{name}</Text>
-        <Code>{port}</Code>
       </Group>
 
       <Stack justify="space-between" align="stretch" style={{ flex: 1 }}>
@@ -133,6 +132,8 @@ export function DeviceCard({
                 color="grey"
                 fullWidth
                 radius="md"
+                loading={secondaryButtonLoading}
+                disabled={secondaryButtonLoading}
                 onClick={onSecondaryButtonClick}
               >
                 {secondaryButtonLabel ?? 'Secondary'}

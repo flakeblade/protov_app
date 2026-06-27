@@ -1,4 +1,4 @@
-import type { SerialTransport } from './types'
+import type { ConnectionLostHandler, SerialTransport } from './types'
 
 /** Serialize async transport operations so concurrent polls do not interleave. */
 export function createTransportQueue() {
@@ -17,11 +17,17 @@ export function createTransportQueue() {
 export type TransportQueue = ReturnType<typeof createTransportQueue>
 
 export function withTransportQueue(transport: SerialTransport, queue: TransportQueue): SerialTransport {
-  return {
+  const wrapped: SerialTransport = {
     label: transport.label,
     open: (baudRate?: number) => queue(() => transport.open(baudRate)),
     close: () => queue(() => transport.close()),
     write: (command: string) => queue(() => transport.write(command)),
     query: (command: string, timeoutMs?: number) => queue(() => transport.query(command, timeoutMs)),
   }
+
+  if (transport.onConnectionLost) {
+    wrapped.onConnectionLost = (handler: ConnectionLostHandler) => transport.onConnectionLost!(handler)
+  }
+
+  return wrapped
 }

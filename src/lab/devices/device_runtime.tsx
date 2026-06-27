@@ -31,11 +31,18 @@ import { createTransportQueue, withTransportQueue } from '../serial/transport-qu
 
 type Listener = () => void
 
+type DisconnectReason = 'manual' | 'lost'
+
+const POLL_FAILURES_BEFORE_LOST = 3
+
 class DeviceRuntime {
   private devices: LabDevice[] = deviceSession.list()
   private readonly listeners = new Set<Listener>()
   private readonly pendingOutput = new PendingChannelOutput()
   private readonly serialColorSlots = new Map<string, number>()
+  private readonly pollFailures = new Map<string, number>()
+  private readonly disconnecting = new Set<string>()
+  private readonly linkUnsubscribers = new Map<string, () => void>()
   private pollTimer: number | null = null
   private pollInFlight = false
 
@@ -108,26 +115,99 @@ class DeviceRuntime {
     }
   }
 
+  private registerDeviceLink(device: LabDevice): void {
+    this.unregisterDeviceLink(device.id)
+    const unsubscribe = device.transport.onConnectionLost?.(() => {
+      void this.handleConnectionLost(device.id)
+    })
+    if (unsubscribe) {
+      this.linkUnsubscribers.set(device.id, unsubscribe)
+    }
+  }
+
+  private unregisterDeviceLink(deviceId: string): void {
+    const unsubscribe = this.linkUnsubscribers.get(deviceId)
+    unsubscribe?.()
+    this.linkUnsubscribers.delete(deviceId)
+  }
+
+  private async removeDevice(deviceId: string, reason: DisconnectReason): Promise<void> {
+    if (this.disconnecting.has(deviceId)) return
+
+    const device = this.devices.find((entry) => entry.id === deviceId)
+    if (!device) return
+
+    this.disconnecting.add(deviceId)
+    this.unregisterDeviceLink(deviceId)
+    this.pollFailures.delete(deviceId)
+    this.pendingOutput.clearDevice(deviceId)
+
+    try {
+      await device.transport.close()
+    } catch {
+      // The port may already be gone after an unplug.
+    }
+
+    deviceSession.remove(deviceId)
+    this.replace((current) => current.filter((entry) => entry.id !== deviceId))
+
+    notifications.show({
+      id: `device-removed-${deviceId}`,
+      title: reason === 'manual' ? 'Device disconnected' : 'Device connection lost',
+      message:
+        reason === 'manual'
+          ? `${device.name} (${device.serialNumber}) was disconnected.`
+          : `${device.name} (${device.serialNumber}) was unplugged or lost.`,
+      color: reason === 'manual' ? 'gray' : 'orange',
+      icon: <IconPlugConnectedX size={18} />,
+    })
+
+    this.disconnecting.delete(deviceId)
+  }
+
+  handleConnectionLost(deviceId: string): void {
+    if (this.disconnecting.has(deviceId)) return
+    void this.removeDevice(deviceId, 'lost')
+  }
+
   private async pollAll(): Promise<void> {
     if (this.pollInFlight || this.devices.length === 0) return
 
     this.pollInFlight = true
     const snapshot = this.devices
+    const lostDeviceIds: string[] = []
 
     try {
       const results = await Promise.all(
         snapshot.map(async (device) => {
+          if (this.disconnecting.has(device.id)) {
+            return { deviceId: device.id, ok: false as const, lost: false }
+          }
+
           try {
             const [channels, telemetry] = await Promise.all([
               pollDeviceChannels(device.transport, device.channels),
               pollDeviceTelemetry(device.transport),
             ])
-            return { deviceId: device.id, channels, telemetry, ok: true as const }
+            this.pollFailures.set(device.id, 0)
+            return { deviceId: device.id, channels, telemetry, ok: true as const, lost: false }
           } catch {
-            return { deviceId: device.id, ok: false as const }
+            const failures = (this.pollFailures.get(device.id) ?? 0) + 1
+            this.pollFailures.set(device.id, failures)
+            const lost = failures >= POLL_FAILURES_BEFORE_LOST
+            if (lost) {
+              serialWarn('poll: device presumed lost', { deviceId: device.id, failures })
+            }
+            return { deviceId: device.id, ok: false as const, lost }
           }
         }),
       )
+
+      for (const result of results) {
+        if (result.lost) {
+          lostDeviceIds.push(result.deviceId)
+        }
+      }
 
       this.replace((current) => {
         let changed = false
@@ -150,6 +230,10 @@ class DeviceRuntime {
         })
         return changed ? next : current
       })
+
+      for (const deviceId of lostDeviceIds) {
+        void this.removeDevice(deviceId, 'lost')
+      }
     } finally {
       this.pollInFlight = false
     }
@@ -225,6 +309,11 @@ class DeviceRuntime {
         },
       ])
 
+      const connected = this.devices.find((entry) => entry.id === probed.serialNumber)
+      if (connected) {
+        this.registerDeviceLink(connected)
+      }
+
       notifications.show({
         id: 'device-connected',
         title: 'Device connected',
@@ -261,20 +350,7 @@ class DeviceRuntime {
   }
 
   async disconnect(deviceId: string): Promise<void> {
-    const device = this.devices.find((entry) => entry.id === deviceId)
-    if (!device) return
-
-    await device.transport.close()
-    this.pendingOutput.clearDevice(deviceId)
-    deviceSession.remove(deviceId)
-    this.replace((current) => current.filter((entry) => entry.id !== deviceId))
-
-    notifications.show({
-      id: 'device-disconnected',
-      title: 'Device disconnected',
-      message: `${device.name} (${device.serialNumber}) removed.`,
-      color: 'gray',
-    })
+    await this.removeDevice(deviceId, 'manual')
   }
 
   async toggleChannelOutput(deviceId: string, channelIdentifier: string): Promise<void> {
@@ -301,6 +377,7 @@ class DeviceRuntime {
       const polled = await pollDeviceChannels(device.transport, current.channels)
       this.patchChannels(deviceId, () => this.pendingOutput.merge(deviceId, polled))
     } catch {
+      if (!this.devices.some((entry) => entry.id === deviceId)) return
       this.pendingOutput.clear(deviceId, channelIdentifier)
       this.patchChannels(deviceId, (entry) =>
         entry.channels.map((ch) =>
@@ -400,6 +477,9 @@ class DeviceRuntime {
     }
   }
   resume(): void {
+    for (const device of this.devices) {
+      this.registerDeviceLink(device)
+    }
     this.syncPolling()
   }
 }

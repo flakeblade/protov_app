@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Container, SimpleGrid } from '@mantine/core'
 import { useNavigate } from 'react-router-dom'
 
@@ -9,6 +10,7 @@ import { useDeviceBadges, useDeviceStore } from '../devices/device_store'
 function ConnectedDeviceCard({ deviceId }: { deviceId: string }) {
   const navigate = useNavigate()
   const { devices, disconnectDevice, toggleChannelOutput } = useDeviceStore()
+  const [disconnecting, setDisconnecting] = useState(false)
   const device = devices.find((entry) => entry.id === deviceId)
   const badges = useDeviceBadges(device!)
 
@@ -17,7 +19,6 @@ function ConnectedDeviceCard({ deviceId }: { deviceId: string }) {
   return (
     <DeviceCard
       name={device.name}
-      port={device.port}
       description={device.description}
       badges={badges}
       channels={device.channels}
@@ -29,8 +30,12 @@ function ConnectedDeviceCard({ deviceId }: { deviceId: string }) {
         navigate('/lab/controls')
       }}
       secondaryButtonLabel="Disconnect"
+      secondaryButtonLoading={disconnecting}
       onSecondaryButtonClick={() => {
-        void disconnectDevice(device.id)
+        setDisconnecting(true)
+        void disconnectDevice(device.id).finally(() => {
+          setDisconnecting(false)
+        })
       }}
     />
   )

@@ -2,7 +2,7 @@ export function formatSerialOpenError(error: unknown): Error {
   if (error instanceof DOMException) {
     if (error.name === 'InvalidStateError') {
       return new Error(
-        'Serial port is already open. Disconnect any other apps using the device, then retry.',
+        'This serial port is still open from a previous connection. Disconnect the device in the app, unplug and replug the USB cable, then retry.',
       )
     }
 
