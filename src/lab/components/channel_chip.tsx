@@ -1,11 +1,12 @@
 import { Badge, NumberFormatter, UnstyledButton } from '@mantine/core'
 import { memo } from 'react'
 
+import type { ChannelColor } from '../devices/channel-colors'
 import classes from './channel_chip.module.css'
 
 export interface Channel {
   identifier: string
-  color: string
+  color: ChannelColor
   /** Display voltage — live reading when output on, setpoint when off. */
   voltage: number
   /** Display current — live reading when output on, setpoint when off. */

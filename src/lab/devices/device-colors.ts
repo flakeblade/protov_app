@@ -1,25 +1,18 @@
 import { CHANNEL_IDENTIFIERS } from '../serial/constants'
+import {
+  colorPairForSlot,
+  type ChannelColor,
+} from './channel-colors'
+
+export type { ChannelColor, ChannelIdentifier, DeviceColorPair } from './channel-colors'
+export {
+  CHANNEL_COLORS,
+  DEFAULT_DEVICE_COLOR_PAIRS,
+  colorPairForSlot,
+  isChannelColor,
+} from './channel-colors'
 
 export const MAX_DEVICES = 4
-
-/** Channel color pairs — slot 0 is assigned to the first device added in a session. */
-export const DEVICE_COLOR_PAIRS = [
-  { A: 'RED', B: 'BLUE' },
-  { A: 'YELLOW', B: 'GREEN' },
-  { A: 'ORANGE', B: 'TEAL' },
-  { A: 'VIOLET', B: 'PINK' },
-] as const
-
-export type ChannelIdentifier = (typeof CHANNEL_IDENTIFIERS)[number]
-export type DeviceColorScheme = (typeof DEVICE_COLOR_PAIRS)[number]
-
-export function mantineColorFromScpi(scpiColor: string): string {
-  return scpiColor.trim().toLowerCase()
-}
-
-export function colorSchemeForSlot(slotIndex: number): DeviceColorScheme {
-  return DEVICE_COLOR_PAIRS[slotIndex % MAX_DEVICES]
-}
 
 /** Lowest unused color slot, or a serial's previous slot when that pair is free again. */
 export function acquireColorSlot(
@@ -49,4 +42,9 @@ export function rememberColorSlot(
   slotIndex: number,
 ): void {
   serialSlotHistory.set(serialNumber, slotIndex)
+}
+
+export function defaultColorForChannel(slotIndex: number, identifier: string): ChannelColor {
+  const pair = colorPairForSlot(slotIndex)
+  return identifier === CHANNEL_IDENTIFIERS[0] ? pair.A : pair.B
 }

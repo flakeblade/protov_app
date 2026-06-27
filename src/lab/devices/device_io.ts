@@ -2,10 +2,15 @@ import type { Channel } from '../components/channel_chip'
 import { CHANNEL_IDENTIFIERS } from '../serial/constants'
 import type { SerialTransport } from '../serial/types'
 import {
-  colorSchemeForSlot,
-  mantineColorFromScpi,
+  clampU8,
+  formatColrScpi,
+  mantineColorToRgb,
+  parseColrScpi,
+  rgbToNearestChannelColor,
+  type ChannelColor,
   type ChannelIdentifier,
-} from './device-colors'
+} from './channel-colors'
+import { colorPairForSlot, defaultColorForChannel } from './device-colors'
 
 const SCPI_CHANNELS = ['CH1', 'CH2'] as const
 
@@ -20,6 +25,16 @@ export const CURRENT_MAX = 5
 
 export type SetpointParam = 'voltage' | 'current' | 'ovp' | 'ocp'
 
+export interface DeviceDisplaySettings {
+  lcdBrightness: number
+  ledBrightness: number
+}
+
+export const DEFAULT_DISPLAY_SETTINGS: DeviceDisplaySettings = {
+  lcdBrightness: 128,
+  ledBrightness: 255,
+}
+
 async function queryNumber(transport: SerialTransport, command: string): Promise<number> {
   const raw = await transport.query(command)
   const value = Number.parseFloat(raw)
@@ -29,30 +44,27 @@ async function queryNumber(transport: SerialTransport, command: string): Promise
   return value
 }
 
+async function queryU8(transport: SerialTransport, command: string): Promise<number> {
+  const raw = (await transport.query(command)).trim()
+  const value = Number.parseInt(raw, 10)
+  if (Number.isNaN(value) || value < 0 || value > 255) {
+    throw new Error(`Invalid u8 response for ${command}: ${raw}`)
+  }
+  return value
+}
+
 async function queryOutputState(transport: SerialTransport, scpiChannel: string): Promise<boolean> {
   const raw = (await transport.query(`OUTP? ${scpiChannel}`)).trim().toUpperCase()
   return raw === 'ON' || raw === '1'
 }
 
-async function queryChannelColor(transport: SerialTransport, scpiChannel: string): Promise<string> {
+async function queryChannelColor(
+  transport: SerialTransport,
+  scpiChannel: string,
+): Promise<ChannelColor> {
   const raw = (await transport.query(`${scpiChannel}:COLR?`)).trim()
-  return mantineColorFromScpi(raw)
-}
-
-function defaultChannel(identifier: string): Channel {
-  return {
-    identifier,
-    color: identifier === 'A' ? 'red' : 'blue',
-    voltage: 0,
-    current: 0,
-    measuredVoltage: 0,
-    measuredCurrent: 0,
-    voltageSet: 0,
-    currentSet: 0.5,
-    ovp: 18,
-    ocp: 1,
-    active: false,
-  }
+  const rgb = parseColrScpi(raw)
+  return rgbToNearestChannelColor(rgb.r, rgb.g, rgb.b)
 }
 
 async function readChannelState(
@@ -61,13 +73,18 @@ async function readChannelState(
   identifier: string,
   prior?: Channel,
 ): Promise<Channel> {
-  const fallback = prior ?? defaultChannel(identifier)
   const outputOn = await queryOutputState(transport, scpiChannel)
   const voltageSet = await queryNumber(transport, `${scpiChannel}:VOLT?`)
   const currentSet = await queryNumber(transport, `${scpiChannel}:CURR?`)
   const ovp = await queryNumber(transport, `${scpiChannel}:OVP?`)
   const ocp = await queryNumber(transport, `${scpiChannel}:OCP?`)
-  const color = await queryChannelColor(transport, scpiChannel)
+
+  let color: ChannelColor
+  try {
+    color = await queryChannelColor(transport, scpiChannel)
+  } catch {
+    color = prior?.color ?? defaultColorForChannel(0, identifier)
+  }
 
   const measuredVoltage = outputOn
     ? await queryNumber(transport, `MEAS:VOLT? ${scpiChannel}`)
@@ -78,7 +95,7 @@ async function readChannelState(
 
   return {
     identifier,
-    color: color || fallback.color,
+    color,
     voltage: outputOn ? measuredVoltage : voltageSet,
     current: outputOn ? measuredCurrent : currentSet,
     measuredVoltage,
@@ -95,11 +112,10 @@ export async function applyDeviceColorScheme(
   transport: SerialTransport,
   slotIndex: number,
 ): Promise<void> {
-  const scheme = colorSchemeForSlot(slotIndex)
+  const scheme = colorPairForSlot(slotIndex)
   for (const identifier of CHANNEL_IDENTIFIERS) {
-    const scpiChannel = CHANNEL_MAP[identifier]
-    const scpiColor = scheme[identifier as ChannelIdentifier]
-    await transport.write(`${scpiChannel}:COLR ${scpiColor}`)
+    const color = scheme[identifier as ChannelIdentifier]
+    await setChannelColor(transport, identifier, color)
   }
 }
 
@@ -117,6 +133,16 @@ export async function pollDeviceChannels(
   }
 
   return updated
+}
+
+export async function pollDeviceDisplaySettings(
+  transport: SerialTransport,
+): Promise<DeviceDisplaySettings> {
+  const [lcdBrightness, ledBrightness] = await Promise.all([
+    queryLcdBrightness(transport),
+    queryLedBrightness(transport),
+  ])
+  return { lcdBrightness, ledBrightness }
 }
 
 export async function disableAllChannels(transport: SerialTransport): Promise<void> {
@@ -160,13 +186,30 @@ export async function setChannelSetpoint(
 export async function setChannelColor(
   transport: SerialTransport,
   channelIdentifier: string,
-  color: string,
+  color: ChannelColor,
 ): Promise<void> {
   const scpiChannel = CHANNEL_MAP[channelIdentifier]
   if (!scpiChannel) {
     throw new Error(`Unknown channel identifier: ${channelIdentifier}`)
   }
-  await transport.write(`${scpiChannel}:COLR ${color.trim().toUpperCase()}`)
+  const rgb = mantineColorToRgb(color)
+  await transport.write(`${scpiChannel}:COLR ${formatColrScpi(rgb)}`)
+}
+
+export async function queryLcdBrightness(transport: SerialTransport): Promise<number> {
+  return queryU8(transport, 'LCD:BRIG?')
+}
+
+export async function setLcdBrightness(transport: SerialTransport, value: number): Promise<void> {
+  await transport.write(`LCD:BRIG ${clampU8(value)}`)
+}
+
+export async function queryLedBrightness(transport: SerialTransport): Promise<number> {
+  return queryU8(transport, 'LED:BRIG?')
+}
+
+export async function setLedBrightness(transport: SerialTransport, value: number): Promise<void> {
+  await transport.write(`LED:BRIG ${clampU8(value)}`)
 }
 
 export function scpiChannelForIdentifier(identifier: string): string | undefined {

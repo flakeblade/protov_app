@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { IconCode, IconNumber, IconNut } from '@tabler/icons-react'
 
+import type { ChannelColor } from '../devices/channel-colors'
 import type { DeviceBadge } from '../components/device_card'
 import type { SetpointParam } from './device_io'
 import { deviceRuntime } from './device_runtime'
@@ -28,6 +29,9 @@ interface DeviceStoreValue {
     param: SetpointParam,
     value: number,
   ) => Promise<void>
+  updateChannelColor: (deviceId: string, channelIdentifier: string, color: ChannelColor) => Promise<void>
+  updateLcdBrightness: (deviceId: string, value: number) => Promise<void>
+  updateLedBrightness: (deviceId: string, value: number) => Promise<void>
   disableAllOutputs: () => Promise<void>
 }
 
@@ -46,6 +50,9 @@ const DeviceActionsContext = createContext<{
     param: SetpointParam,
     value: number,
   ) => Promise<void>
+  updateChannelColor: (deviceId: string, channelIdentifier: string, color: ChannelColor) => Promise<void>
+  updateLcdBrightness: (deviceId: string, value: number) => Promise<void>
+  updateLedBrightness: (deviceId: string, value: number) => Promise<void>
   disableAllOutputs: () => Promise<void>
 } | null>(null)
 
@@ -121,6 +128,21 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
     [],
   )
 
+  const updateChannelColor = useCallback(
+    async (deviceId: string, channelIdentifier: string, color: ChannelColor) => {
+      await deviceRuntime.updateChannelColor(deviceId, channelIdentifier, color)
+    },
+    [],
+  )
+
+  const updateLcdBrightness = useCallback(async (deviceId: string, value: number) => {
+    await deviceRuntime.updateLcdBrightness(deviceId, value)
+  }, [])
+
+  const updateLedBrightness = useCallback(async (deviceId: string, value: number) => {
+    await deviceRuntime.updateLedBrightness(deviceId, value)
+  }, [])
+
   const disableAllOutputs = useCallback(async () => {
     await deviceRuntime.disableAllOutputs()
   }, [])
@@ -139,6 +161,9 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       disconnectDevice,
       toggleChannelOutput,
       updateChannelSetpoint,
+      updateChannelColor,
+      updateLcdBrightness,
+      updateLedBrightness,
       disableAllOutputs,
     }),
     [
@@ -146,6 +171,9 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       disconnectDevice,
       toggleChannelOutput,
       updateChannelSetpoint,
+      updateChannelColor,
+      updateLcdBrightness,
+      updateLedBrightness,
       disableAllOutputs,
     ],
   )

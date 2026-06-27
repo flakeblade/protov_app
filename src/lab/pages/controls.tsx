@@ -20,6 +20,8 @@ import { IconAdjustments, IconBolt } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 
 import type { Channel } from '../components/channel_chip'
+import { ChannelColorPicker } from '../components/channel_color_picker'
+import type { ChannelColor } from '../devices/channel-colors'
 import { useDeviceStore } from '../devices/device_store'
 import type { SetpointParam } from '../devices/device_io'
 import { CURRENT_MAX, VOLTAGE_MAX } from '../devices/device_io'
@@ -45,7 +47,7 @@ function regulationMode(channel: Channel): RegulationMode {
 
 export function ControlsPage() {
   const navigate = useNavigate()
-  const { devices, toggleChannelOutput, updateChannelSetpoint } = useDeviceStore()
+  const { devices, toggleChannelOutput, updateChannelSetpoint, updateChannelColor } = useDeviceStore()
 
   const channels = devices.flatMap((device) =>
     device.channels.map((channel) => ({ deviceId: device.id, channel })),
@@ -92,6 +94,9 @@ export function ControlsPage() {
             }}
             onSetpointChange={(param, value) => {
               void updateChannelSetpoint(deviceId, channel.identifier, param, value)
+            }}
+            onColorChange={(color) => {
+              void updateChannelColor(deviceId, channel.identifier, color)
             }}
           />
         ))}
@@ -254,9 +259,15 @@ interface ChannelCardProps {
   channel: Channel
   onToggleOutput: () => void
   onSetpointChange: (param: SetpointParam, value: number) => void
+  onColorChange: (color: ChannelColor) => void
 }
 
-function ChannelCard({ channel, onToggleOutput, onSetpointChange }: ChannelCardProps) {
+function ChannelCard({
+  channel,
+  onToggleOutput,
+  onSetpointChange,
+  onColorChange,
+}: ChannelCardProps) {
   const theme = useMantineTheme()
   const { isEngineering } = useLabView()
   const mode = regulationMode(channel)
@@ -277,9 +288,12 @@ function ChannelCard({ channel, onToggleOutput, onSetpointChange }: ChannelCardP
       }}
     >
       <Group justify="space-between" mb="md">
-        <Badge color={channel.color} size="md">
-          {`Channel ${channel.identifier}`}
-        </Badge>
+        <Group gap="xs">
+          <Badge color={channel.color} size="md">
+            {`Channel ${channel.identifier}`}
+          </Badge>
+          <ChannelColorPicker color={channel.color} onChange={onColorChange} />
+        </Group>
 
         <Group gap="sm">
           <Tooltip label={REGULATION_TOOLTIPS[mode]}>

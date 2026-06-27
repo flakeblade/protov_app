@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Badge,
   Button,
@@ -7,6 +7,7 @@ import {
   Code,
   Group,
   NumberFormatter,
+  Slider,
   Stack,
   Text,
 } from '@mantine/core'
@@ -23,6 +24,7 @@ import {
 import { SerialConsolePanel, useSerialConsole } from './serial_console'
 import { TemperatureMeters } from './temperature_meters'
 import type { LabDevice } from '../devices/device_store'
+import { useDeviceStore } from '../devices/device_store'
 import { queryRegisterDump, scpiRegisterDumpCommand } from '../devices/telemetry_io'
 import { DEFAULT_BAUD_RATE } from '../serial/constants'
 import classes from './telemetry_device_card.module.css'
@@ -52,6 +54,18 @@ function CompactBadge({
 }
 
 export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
+  const { updateLcdBrightness, updateLedBrightness } = useDeviceStore()
+  const [lcdDraft, setLcdDraft] = useState(device.display.lcdBrightness)
+  const [ledDraft, setLedDraft] = useState(device.display.ledBrightness)
+
+  useEffect(() => {
+    setLcdDraft(device.display.lcdBrightness)
+  }, [device.display.lcdBrightness])
+
+  useEffect(() => {
+    setLedDraft(device.display.ledBrightness)
+  }, [device.display.ledBrightness])
+
   const console = useSerialConsole({
     transport: device.transport,
     port: device.port,
@@ -131,6 +145,36 @@ export function TelemetryDeviceCard({ device }: TelemetryDeviceCardProps) {
         </Group>
 
         <TemperatureMeters temperatures={telemetry.temperatures} compact />
+
+        <Stack gap={4}>
+          <Text className={classes.sectionLabel} c="dimmed">
+            DISPLAY
+          </Text>
+          <Stack gap="xs">
+            <Text size="xs">LCD brightness ({device.display.lcdBrightness})</Text>
+            <Slider
+              min={0}
+              max={255}
+              value={lcdDraft}
+              onChange={setLcdDraft}
+              onChangeEnd={(value) => {
+                void updateLcdBrightness(device.id, value)
+              }}
+              size="xs"
+            />
+            <Text size="xs">LED brightness ({device.display.ledBrightness})</Text>
+            <Slider
+              min={0}
+              max={255}
+              value={ledDraft}
+              onChange={setLedDraft}
+              onChangeEnd={(value) => {
+                void updateLedBrightness(device.id, value)
+              }}
+              size="xs"
+            />
+          </Stack>
+        </Stack>
 
         <Stack gap={4}>
           <Text className={classes.sectionLabel} c="dimmed">

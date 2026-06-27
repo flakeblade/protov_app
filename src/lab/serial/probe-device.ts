@@ -1,4 +1,5 @@
 import type { Channel } from '../components/channel_chip'
+import { defaultColorForChannel } from '../devices/device-colors'
 import { pollDeviceChannels } from '../devices/device_io'
 import {
   CHANNEL_IDENTIFIERS,
@@ -39,7 +40,7 @@ export async function probePowerSupply(transport: SerialTransport): Promise<Prob
   serialDebug('probe: polling channels')
   const prior = CHANNEL_IDENTIFIERS.map((identifier) => ({
     identifier,
-    color: identifier === 'A' ? 'red' : 'blue',
+    color: defaultColorForChannel(0, identifier),
     voltage: 0,
     current: 0,
     measuredVoltage: 0,

@@ -1,4 +1,5 @@
 import type { Channel } from '../components/channel_chip'
+import type { DeviceDisplaySettings } from './device_io'
 import type { DeviceTelemetry } from './telemetry_io'
 import type { LabDevice } from './device_types'
 
@@ -16,6 +17,10 @@ export function channelEqual(a: Channel, b: Channel): boolean {
     a.ocp === b.ocp &&
     a.active === b.active
   )
+}
+
+export function displayEqual(a: DeviceDisplaySettings, b: DeviceDisplaySettings): boolean {
+  return a.lcdBrightness === b.lcdBrightness && a.ledBrightness === b.ledBrightness
 }
 
 export function reconcileChannels(previous: Channel[], incoming: Channel[]): Channel[] {

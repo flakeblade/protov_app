@@ -3,19 +3,27 @@ import { IconPlugConnected, IconPlugConnectedX } from '@tabler/icons-react'
 
 import type { Channel } from '../components/channel_chip'
 
+import type { ChannelColor } from './channel-colors'
+
 import {
+  DEFAULT_DISPLAY_SETTINGS,
   DEVICE_POLL_INTERVAL_MS,
   applyDeviceColorScheme,
   disableAllChannels,
   pollDeviceChannels,
+  pollDeviceDisplaySettings,
+  setChannelColor,
   setChannelOutput,
   setChannelSetpoint,
+  setLcdBrightness,
+  setLedBrightness,
   type SetpointParam,
 } from './device_io'
 import { EMPTY_TELEMETRY, pollDeviceTelemetry } from './telemetry_io'
 import { MAX_DEVICES, acquireColorSlot, rememberColorSlot } from './device-colors'
 import { adjustChannelForActive, PendingChannelOutput } from './channel-output-pending'
 import {
+  displayEqual,
   patchDeviceList,
   reconcileChannels,
   telemetryEqual,
@@ -185,12 +193,13 @@ class DeviceRuntime {
           }
 
           try {
-            const [channels, telemetry] = await Promise.all([
+            const [channels, telemetry, display] = await Promise.all([
               pollDeviceChannels(device.transport, device.channels),
               pollDeviceTelemetry(device.transport),
+              pollDeviceDisplaySettings(device.transport).catch(() => device.display),
             ])
             this.pollFailures.set(device.id, 0)
-            return { deviceId: device.id, channels, telemetry, ok: true as const, lost: false }
+            return { deviceId: device.id, channels, telemetry, display, ok: true as const, lost: false }
           } catch {
             const failures = (this.pollFailures.get(device.id) ?? 0) + 1
             this.pollFailures.set(device.id, failures)
@@ -218,14 +227,16 @@ class DeviceRuntime {
           const mergedChannels = this.pendingOutput.merge(device.id, result.channels)
           const channels = reconcileChannels(device.channels, mergedChannels)
           const telemetryChanged = !telemetryEqual(device.telemetry, result.telemetry)
+          const displayChanged = !displayEqual(device.display, result.display)
 
-          if (channels === device.channels && !telemetryChanged) return device
+          if (channels === device.channels && !telemetryChanged && !displayChanged) return device
 
           changed = true
           return {
             ...device,
             channels,
             telemetry: telemetryChanged ? result.telemetry : device.telemetry,
+            display: displayChanged ? result.display : device.display,
           }
         })
         return changed ? next : current
@@ -291,6 +302,9 @@ class DeviceRuntime {
       await applyDeviceColorScheme(transport, colorSlot)
       const channels = await pollDeviceChannels(transport, probed.channels)
       const telemetry = await pollDeviceTelemetry(transport).catch(() => EMPTY_TELEMETRY)
+      const display = await pollDeviceDisplaySettings(transport).catch(
+        () => DEFAULT_DISPLAY_SETTINGS,
+      )
 
       this.replace((current) => [
         ...current,
@@ -304,6 +318,7 @@ class DeviceRuntime {
           hwVersion: probed.hwVersion,
           channels,
           telemetry,
+          display,
           colorSlot,
           transport,
         },
@@ -411,6 +426,96 @@ class DeviceRuntime {
         id: 'setpoint-update-failed',
         title: 'Setpoint update failed',
         message: `Could not update ${param} for channel ${channelIdentifier}.`,
+        color: 'red',
+      })
+    }
+  }
+
+  async updateChannelColor(
+    deviceId: string,
+    channelIdentifier: string,
+    color: ChannelColor,
+  ): Promise<void> {
+    const device = this.devices.find((entry) => entry.id === deviceId)
+    if (!device) return
+
+    const priorChannel = device.channels.find((entry) => entry.identifier === channelIdentifier)
+    if (!priorChannel) return
+
+    this.patchChannels(deviceId, (entry) =>
+      entry.channels.map((ch) =>
+        ch.identifier === channelIdentifier ? { ...ch, color } : ch,
+      ),
+    )
+
+    try {
+      await setChannelColor(device.transport, channelIdentifier, color)
+      const current = this.devices.find((entry) => entry.id === deviceId)
+      if (!current) return
+      const polled = await pollDeviceChannels(device.transport, current.channels)
+      this.patchChannels(deviceId, () => this.pendingOutput.merge(deviceId, polled))
+    } catch {
+      this.patchChannels(deviceId, (entry) =>
+        entry.channels.map((ch) =>
+          ch.identifier === channelIdentifier ? priorChannel : ch,
+        ),
+      )
+      notifications.show({
+        id: 'channel-color-failed',
+        title: 'Color update failed',
+        message: `Could not update color for channel ${channelIdentifier}.`,
+        color: 'red',
+      })
+    }
+  }
+
+  async updateLcdBrightness(deviceId: string, value: number): Promise<void> {
+    const device = this.devices.find((entry) => entry.id === deviceId)
+    if (!device) return
+
+    const prior = device.display.lcdBrightness
+    this.updateDevice(deviceId, (entry) => ({
+      ...entry,
+      display: { ...entry.display, lcdBrightness: value },
+    }))
+
+    try {
+      await setLcdBrightness(device.transport, value)
+    } catch {
+      this.updateDevice(deviceId, (entry) => ({
+        ...entry,
+        display: { ...entry.display, lcdBrightness: prior },
+      }))
+      notifications.show({
+        id: 'lcd-brightness-failed',
+        title: 'LCD brightness update failed',
+        message: 'Could not update LCD brightness.',
+        color: 'red',
+      })
+    }
+  }
+
+  async updateLedBrightness(deviceId: string, value: number): Promise<void> {
+    const device = this.devices.find((entry) => entry.id === deviceId)
+    if (!device) return
+
+    const prior = device.display.ledBrightness
+    this.updateDevice(deviceId, (entry) => ({
+      ...entry,
+      display: { ...entry.display, ledBrightness: value },
+    }))
+
+    try {
+      await setLedBrightness(device.transport, value)
+    } catch {
+      this.updateDevice(deviceId, (entry) => ({
+        ...entry,
+        display: { ...entry.display, ledBrightness: prior },
+      }))
+      notifications.show({
+        id: 'led-brightness-failed',
+        title: 'LED brightness update failed',
+        message: 'Could not update LED brightness.',
         color: 'red',
       })
     }
