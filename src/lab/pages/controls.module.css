@@ -101,3 +101,12 @@
   height: 100%;
   font-weight: 400;
 }
+
+.limitInputDirty {
+  border-color: light-dark(var(--mantine-color-blue-4), var(--mantine-color-blue-5));
+}
+
+.applyButton {
+  align-self: center;
+  font-weight: 500;
+}
