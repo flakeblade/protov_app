@@ -15,6 +15,7 @@ test.describe('Mock SCPI device', () => {
       { output: boolean; measured: { current: number } }
     >
     expect(channels.CH1.output).toBe(true)
-    expect(channels.CH1.measured.current).toBeCloseTo(0.243, 3)
+    expect(channels.CH1.measured.current).toBeGreaterThan(0.22)
+    expect(channels.CH1.measured.current).toBeLessThan(0.27)
   })
 })

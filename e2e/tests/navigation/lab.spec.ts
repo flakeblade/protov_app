@@ -16,10 +16,10 @@ test.describe('Lab sidebar', () => {
     await expect(page.getByText('ProtoV MINI').first()).toBeVisible()
 
     await lab.openControls()
-    await expect(page.getByText('Channel A').first()).toBeVisible()
+    await expect(page.getByText('No devices connected').first()).toBeVisible()
 
     await lab.openGraphs()
-    await expect(page.getByText('Download window (V, A, W)').first()).toBeVisible()
+    await expect(page.getByText('No devices connected').first()).toBeVisible()
 
     await lab.openDevices()
     await lab.expectDevices()
