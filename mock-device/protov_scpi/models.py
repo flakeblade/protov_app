@@ -50,8 +50,8 @@ class ChannelState:
 
 @dataclass
 class DeviceState:
-    manufacturer: str = "Flake-Blade"
-    model: str = "ProtoV-MINI"
+    manufacturer: str = "FBRD Inc."
+    model: str = "ProtoV MINI"
     serial: str = "550e8400"
     fw_version: str = "1.0.0"
     hw_version: str = "A.1"
