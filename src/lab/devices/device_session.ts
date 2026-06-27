@@ -1,4 +1,4 @@
-import type { LabDevice } from './device_store'
+import type { LabDevice } from './device_types'
 
 /** Module-level registry so open transports survive React remounts and route changes. */
 class DeviceSession {

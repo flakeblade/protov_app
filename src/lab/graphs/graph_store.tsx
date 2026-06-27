@@ -76,6 +76,10 @@ export function GraphStoreProvider({ children }: GraphStoreProviderProps) {
   const [bufferSampleCount, setBufferSampleCount] = useState<BufferSampleCount>(DEFAULT_BUFFER_SAMPLE_COUNT)
   const [renderGeneration, setRenderGeneration] = useState(0)
 
+  const channelTopologyKey = devices
+    .map((device) => `${device.id}:${device.channels.map((channel) => channel.identifier).join('/')}`)
+    .join('|')
+
   const activeKeys = useMemo(() => {
     const keys = new Set<string>()
     for (const device of devices) {
@@ -84,7 +88,7 @@ export function GraphStoreProvider({ children }: GraphStoreProviderProps) {
       }
     }
     return keys
-  }, [devices])
+  }, [channelTopologyKey, devices])
 
   const activeKeysRef = useRef(activeKeys)
   activeKeysRef.current = activeKeys

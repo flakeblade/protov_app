@@ -2,11 +2,12 @@ import { ActionIcon, Tooltip } from '@mantine/core'
 import { IconPower } from '@tabler/icons-react'
 import cx from 'clsx'
 
-import { useDeviceStore } from '../devices/device_store'
+import { useDeviceActions, useDevices } from '../devices/device_store'
 import classes from './theme_toggle.module.css'
 
 export function DisableOutput() {
-  const { disableAllOutputs, devices } = useDeviceStore()
+  const { disableAllOutputs } = useDeviceActions()
+  const devices = useDevices()
   const disabled = devices.length === 0
 
   return (

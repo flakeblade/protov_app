@@ -44,4 +44,10 @@ export const GraphChannelCard = memo(function GraphChannelCard({
       onToggleOutput={handleToggleOutput}
     />
   )
-})
+}, (prev, next) =>
+  prev.entry.channel === next.entry.channel &&
+  prev.window === next.window &&
+  prev.chartRevision === next.chartRevision &&
+  prev.getChannelSeries === next.getChannelSeries &&
+  prev.onToggleOutput === next.onToggleOutput,
+)

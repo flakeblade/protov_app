@@ -1,4 +1,5 @@
 import { Badge, NumberFormatter, UnstyledButton } from '@mantine/core'
+import { memo } from 'react'
 
 import classes from './channel_chip.module.css'
 
@@ -23,7 +24,7 @@ interface ChannelChipProps {
   onToggle?: (identifier: string) => void
 }
 
-export function ChannelChip({ channel, onToggle }: ChannelChipProps) {
+export const ChannelChip = memo(function ChannelChip({ channel, onToggle }: ChannelChipProps) {
   const handleClick = () => {
     onToggle?.(channel.identifier)
   }
@@ -56,4 +57,4 @@ export function ChannelChip({ channel, onToggle }: ChannelChipProps) {
       </Badge>
     </UnstyledButton>
   )
-}
+}, (prev, next) => prev.channel === next.channel)
