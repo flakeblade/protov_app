@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { MantineColor } from '@mantine/core'
 import {
   Badge,
@@ -34,6 +34,78 @@ import { useLabView } from '../lab_view'
 import classes from './controls.module.css'
 
 const DECIMALS = 3
+
+type SetpointKey = 'voltage' | 'current' | 'ovp' | 'ocp'
+
+interface ChannelSetpoints {
+  voltage: number
+  current: number
+  ovp: number
+  ocp: number
+}
+
+type SetpointTextDraft = Record<SetpointKey, string>
+
+function channelSetpoints(channel: Channel): ChannelSetpoints {
+  return {
+    voltage: channel.voltageSet,
+    current: channel.currentSet,
+    ovp: channel.ovp,
+    ocp: channel.ocp,
+  }
+}
+
+function formatSetpoint(value: number): string {
+  return value.toFixed(DECIMALS)
+}
+
+function formatSetpointDraft(setpoints: ChannelSetpoints): SetpointTextDraft {
+  return {
+    voltage: formatSetpoint(setpoints.voltage),
+    current: formatSetpoint(setpoints.current),
+    ovp: formatSetpoint(setpoints.ovp),
+    ocp: formatSetpoint(setpoints.ocp),
+  }
+}
+
+function parseSetpoint(text: string): number | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  const value = Number.parseFloat(trimmed)
+  if (Number.isNaN(value)) return null
+  return Math.round(value * 10 ** DECIMALS) / 10 ** DECIMALS
+}
+
+function draftTextDirty(text: string, committed: number): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return committed !== 0
+  const parsed = parseSetpoint(trimmed)
+  if (parsed === null) return true
+  return parsed !== committed
+}
+
+function draftDirty(draft: SetpointTextDraft, committed: ChannelSetpoints): boolean {
+  return (
+    draftTextDirty(draft.voltage, committed.voltage) ||
+    draftTextDirty(draft.current, committed.current) ||
+    draftTextDirty(draft.ovp, committed.ovp) ||
+    draftTextDirty(draft.ocp, committed.ocp)
+  )
+}
+
+function parseDraft(draft: SetpointTextDraft): ChannelSetpoints | null {
+  const voltage = parseSetpoint(draft.voltage)
+  const current = parseSetpoint(draft.current)
+  const ovp = parseSetpoint(draft.ovp)
+  const ocp = parseSetpoint(draft.ocp)
+  if (voltage === null || current === null || ovp === null || ocp === null) return null
+  return {
+    voltage: Math.min(VOLTAGE_MAX, Math.max(0, voltage)),
+    current: Math.min(CURRENT_MAX, Math.max(0, current)),
+    ovp: Math.min(VOLTAGE_MAX, Math.max(0, ovp)),
+    ocp: Math.min(CURRENT_MAX, Math.max(0, ocp)),
+  }
+}
 
 export function ControlsPage() {
   const navigate = useNavigate()
@@ -82,8 +154,10 @@ export function ControlsPage() {
             onToggleOutput={() => {
               void toggleChannelOutput(deviceId, channel.identifier)
             }}
-            onSetpointChange={(param, value) => {
-              void updateChannelSetpoint(deviceId, channel.identifier, param, value)
+            onApplySetpoints={async (changes) => {
+              for (const [param, value] of Object.entries(changes) as [SetpointParam, number][]) {
+                await updateChannelSetpoint(deviceId, channel.identifier, param, value)
+              }
             }}
             onColorChange={(color) => {
               void updateChannelColor(deviceId, channel.identifier, color)
@@ -116,40 +190,32 @@ function ReadingValue({ value, unit }: ReadingValueProps) {
 interface LimitFieldProps {
   label: string
   unit: string
-  value: number
+  text: string
+  committed: number
   min: number
   max: number
   placeholder: string
   tooltip: string
-  onCommit: (value: number) => void
+  onTextChange: (text: string) => void
 }
 
 function LimitField({
   label,
   unit,
-  value,
+  text,
+  committed,
   min,
   max,
   placeholder,
   tooltip,
-  onCommit,
+  onTextChange,
 }: LimitFieldProps) {
-  const [draft, setDraft] = useState(value)
+  const dirty = draftTextDirty(text, committed)
 
-  useEffect(() => {
-    setDraft(value)
-  }, [value])
-
-  const commit = () => {
-    if (draft === null || Number.isNaN(draft)) {
-      setDraft(value)
-      return
-    }
-    const clamped = Math.min(max, Math.max(min, draft))
-    setDraft(clamped)
-    if (clamped !== value) {
-      onCommit(clamped)
-    }
+  const handleBlur = () => {
+    const parsed = parseSetpoint(text)
+    if (parsed === null) return
+    onTextChange(formatSetpoint(parsed))
   }
 
   return (
@@ -158,19 +224,16 @@ function LimitField({
         <Text className={classes.limitLabel}>{label}</Text>
         <NumberInput
           className={classes.limitInput}
-          classNames={{ input: classes.limitInputField }}
-          value={draft}
-          onChange={(next) => setDraft(typeof next === 'number' ? next : 0)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.currentTarget.blur()
-            }
+          classNames={{
+            input: `${classes.limitInputField}${dirty ? ` ${classes.limitInputDirty}` : ''}`,
           }}
+          value={text}
+          onChange={(next) => onTextChange(String(next ?? ''))}
+          onBlur={handleBlur}
           placeholder={placeholder}
           suffix={unit}
           decimalScale={DECIMALS}
-          fixedDecimalScale
+          hideControls
           min={min}
           max={max}
           size="xs"
@@ -183,33 +246,37 @@ function LimitField({
 interface ParameterRowProps {
   label: string
   liveValue: number
-  setValue: number
   unit: string
   min: number
   max: number
   setTooltip: string
   protectionLabel?: 'OVP' | 'OCP'
-  protectionValue?: number
+  setText: string
+  protectionText?: string
+  committedSet: number
+  committedProtection?: number
   protectionTooltip?: string
   showProtection?: boolean
-  onSetCommit: (value: number) => void
-  onProtectionCommit?: (value: number) => void
+  onSetTextChange: (text: string) => void
+  onProtectionTextChange?: (text: string) => void
 }
 
 function ParameterRow({
   label,
   liveValue,
-  setValue,
   unit,
   min,
   max,
   setTooltip,
   protectionLabel,
-  protectionValue = 0,
+  setText,
+  protectionText = '',
+  committedSet,
+  committedProtection = 0,
   protectionTooltip,
   showProtection = true,
-  onSetCommit,
-  onProtectionCommit,
+  onSetTextChange,
+  onProtectionTextChange,
 }: ParameterRowProps) {
   const placeholder = `0.${'0'.repeat(DECIMALS)}–${max}.${'0'.repeat(DECIMALS)}`
 
@@ -221,23 +288,25 @@ function ParameterRow({
         <LimitField
           label="SET"
           unit={unit}
-          value={setValue}
+          text={setText}
+          committed={committedSet}
           min={min}
           max={max}
           placeholder={placeholder}
           tooltip={setTooltip}
-          onCommit={onSetCommit}
+          onTextChange={onSetTextChange}
         />
-        {showProtection && protectionLabel && protectionTooltip && onProtectionCommit && (
+        {showProtection && protectionLabel && protectionTooltip && onProtectionTextChange && (
           <LimitField
             label={protectionLabel}
             unit={unit}
-            value={protectionValue}
+            text={protectionText}
+            committed={committedProtection}
             min={min}
             max={max}
             placeholder={placeholder}
             tooltip={protectionTooltip}
-            onCommit={onProtectionCommit}
+            onTextChange={onProtectionTextChange}
           />
         )}
       </div>
@@ -248,14 +317,14 @@ function ParameterRow({
 interface ChannelCardProps {
   channel: Channel
   onToggleOutput: () => void
-  onSetpointChange: (param: SetpointParam, value: number) => void
+  onApplySetpoints: (changes: Partial<Record<SetpointParam, number>>) => Promise<void>
   onColorChange: (color: ChannelColor) => void
 }
 
 function ChannelCard({
   channel,
   onToggleOutput,
-  onSetpointChange,
+  onApplySetpoints,
   onColorChange,
 }: ChannelCardProps) {
   const theme = useMantineTheme()
@@ -264,6 +333,44 @@ function ChannelCard({
   const modeIsFault = isChannelFaultMode(mode)
   const borderColor = theme.colors[channel.color as MantineColor]?.[5] ?? theme.colors.gray[5]
   const livePower = channel.measuredVoltage * channel.measuredCurrent
+
+  const committed = useMemo(
+    () => channelSetpoints(channel),
+    [channel.voltageSet, channel.currentSet, channel.ovp, channel.ocp],
+  )
+  const [draftText, setDraftText] = useState(() => formatSetpointDraft(committed))
+  const [applying, setApplying] = useState(false)
+
+  useEffect(() => {
+    setDraftText((previous) => (draftDirty(previous, committed) ? previous : formatSetpointDraft(committed)))
+  }, [committed])
+
+  const dirty = draftDirty(draftText, committed)
+  const parsedDraft = parseDraft(draftText)
+  const canApply = dirty && parsedDraft !== null
+
+  const updateDraftText = (key: SetpointKey, text: string) => {
+    setDraftText((previous) => ({ ...previous, [key]: text }))
+  }
+
+  const handleApply = async () => {
+    if (!canApply || applying || !parsedDraft) return
+
+    const changes: Partial<Record<SetpointParam, number>> = {}
+    if (parsedDraft.voltage !== committed.voltage) changes.voltage = parsedDraft.voltage
+    if (parsedDraft.current !== committed.current) changes.current = parsedDraft.current
+    if (parsedDraft.ovp !== committed.ovp) changes.ovp = parsedDraft.ovp
+    if (parsedDraft.ocp !== committed.ocp) changes.ocp = parsedDraft.ocp
+    if (Object.keys(changes).length === 0) return
+
+    setApplying(true)
+    try {
+      await onApplySetpoints(changes)
+      setDraftText(formatSetpointDraft(parsedDraft))
+    } finally {
+      setApplying(false)
+    }
+  }
 
   return (
     <Card
@@ -307,44 +414,66 @@ function ChannelCard({
         </Group>
       </Group>
 
-      <Stack gap="xs">
-        <ParameterRow
-          label="Voltage"
-          liveValue={channel.measuredVoltage}
-          setValue={channel.voltageSet}
-          unit="V"
-          min={0}
-          max={VOLTAGE_MAX}
-          setTooltip="Target voltage on output"
-          protectionLabel="OVP"
-          protectionValue={channel.ovp}
-          protectionTooltip="Over-voltage protection limit"
-          showProtection={isEngineering}
-          onSetCommit={(value) => onSetpointChange('voltage', value)}
-          onProtectionCommit={(value) => onSetpointChange('ovp', value)}
-        />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          void handleApply()
+        }}
+      >
+        <Stack gap="xs">
+          <ParameterRow
+            label="Voltage"
+            liveValue={channel.measuredVoltage}
+            unit="V"
+            min={0}
+            max={VOLTAGE_MAX}
+            setTooltip="Target voltage on output"
+            protectionLabel="OVP"
+            setText={draftText.voltage}
+            protectionText={draftText.ovp}
+            committedSet={committed.voltage}
+            committedProtection={committed.ovp}
+            protectionTooltip="Over-voltage protection limit"
+            showProtection={isEngineering}
+            onSetTextChange={(text) => updateDraftText('voltage', text)}
+            onProtectionTextChange={(text) => updateDraftText('ovp', text)}
+          />
 
-        <ParameterRow
-          label="Current"
-          liveValue={channel.measuredCurrent}
-          setValue={channel.currentSet}
-          unit="A"
-          min={0}
-          max={CURRENT_MAX}
-          setTooltip="Target current on output"
-          protectionLabel="OCP"
-          protectionValue={channel.ocp}
-          protectionTooltip="Over-current protection limit"
-          showProtection={isEngineering}
-          onSetCommit={(value) => onSetpointChange('current', value)}
-          onProtectionCommit={(value) => onSetpointChange('ocp', value)}
-        />
+          <ParameterRow
+            label="Current"
+            liveValue={channel.measuredCurrent}
+            unit="A"
+            min={0}
+            max={CURRENT_MAX}
+            setTooltip="Target current on output"
+            protectionLabel="OCP"
+            setText={draftText.current}
+            protectionText={draftText.ocp}
+            committedSet={committed.current}
+            committedProtection={committed.ocp}
+            protectionTooltip="Over-current protection limit"
+            showProtection={isEngineering}
+            onSetTextChange={(text) => updateDraftText('current', text)}
+            onProtectionTextChange={(text) => updateDraftText('ocp', text)}
+          />
 
-        <div className={classes.powerRow}>
-          <Text className={classes.rowLabel}>Power</Text>
-          <ReadingValue value={livePower} unit="W" />
-        </div>
-      </Stack>
+          <div className={classes.powerRow}>
+            <Text className={classes.rowLabel}>Power</Text>
+            <ReadingValue value={livePower} unit="W" />
+            <Button
+              className={classes.applyButton}
+              variant="light"
+              color={channel.color}
+              size="sm"
+              disabled={!canApply}
+              loading={applying}
+              type="submit"
+            >
+              Apply
+            </Button>
+          </div>
+        </Stack>
+      </form>
     </Card>
   )
 }
