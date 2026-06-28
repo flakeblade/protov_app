@@ -11,18 +11,20 @@ test.describe('Lab sidebar', () => {
     await expect(page).toHaveURL(/\/lab\/devices$/)
   })
 
-  test('navigates between standard lab pages', async ({ page, lab }) => {
-    await lab.expectDevices()
-    await expect(page.getByText('ProtoV MINI').first()).toBeVisible()
+  test('navigates between standard lab pages', async ({ lab }) => {
+    await lab.expectDevicesEmptyState()
+    await lab.expectSidebarLinkActive('Devices')
 
     await lab.openControls()
-    await expect(page.getByText('No devices connected').first()).toBeVisible()
+    await lab.expectControlsEmptyState()
+    await lab.expectSidebarLinkActive('Controls')
 
     await lab.openGraphs()
-    await expect(page.getByText('No devices connected').first()).toBeVisible()
+    await lab.expectGraphsEmptyState()
+    await lab.expectSidebarLinkActive('Graphs')
 
     await lab.openDevices()
-    await lab.expectDevices()
+    await lab.expectDevicesEmptyState()
   })
 
   test('shows telemetry only in engineering view', async ({ page, lab }) => {
@@ -32,6 +34,7 @@ test.describe('Lab sidebar', () => {
     await expect(page.getByRole('link', { name: 'Telemetry' })).toBeVisible()
 
     await lab.openTelemetry()
-    await expect(page.getByText('No devices connected')).toBeVisible()
+    await lab.expectTelemetryEmptyState()
+    await lab.expectSidebarLinkActive('Telemetry')
   })
 })
