@@ -99,6 +99,15 @@ export class LabPage {
     await expect(this.page.getByRole('button', { name: 'Connect' })).toBeVisible()
   }
 
+  async expectLabUnsupported() {
+    await this.expectDevices()
+    await expect(this.page.getByRole('heading', { name: 'Lab not available in this browser' })).toBeVisible()
+    await expect(this.page.getByText(/Safari is not supported for ProtoV Lab\./)).toBeVisible()
+    await expect(this.page.getByRole('main').getByRole('link', { name: 'Go home' })).toBeVisible()
+    await expect(this.page.getByRole('main').getByRole('link', { name: 'Docs' })).toBeVisible()
+    await expect(this.page.getByRole('button', { name: 'Connect' })).toHaveCount(0)
+  }
+
   async expectControlsEmptyState() {
     await this.expectControls()
     await expect(this.page.getByText('No devices connected')).toBeVisible()

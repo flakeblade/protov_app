@@ -19,7 +19,7 @@ e2e/
 playwright.config.ts
 ```
 
-Playwright projects: **chromium**, **msedge**, and **firefox** run the general suite; **chromium-devices-mock** runs connected lab tests against protov-hal-mock.
+Playwright projects: **chromium**, **msedge**, **firefox**, and **webkit** run the general suite; **chromium-devices-mock** runs connected lab tests against protov-hal-mock.
 
 ## Commands
 
@@ -33,6 +33,9 @@ npm run test:e2e:report   # Open HTML report after a run
 
 # General suite only (all three desktop browsers):
 npm run test:e2e -- e2e/tests/general --project=chromium --project=msedge --project=firefox
+
+# WebKit / Safari smoke tests:
+npm run test:e2e -- e2e/tests/general/webkit.spec.ts --project=webkit
 
 # Connected mock suite only:
 npm run test:e2e -- --project=chromium-devices-mock

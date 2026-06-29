@@ -20,6 +20,8 @@ const generalBrowserProjects = [
   { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
 ] as const
 
+const WEBKIT_TESTS = ['**/webkit.spec.ts'] as const
+
 export default defineConfig({
   testDir: './e2e/tests',
   fullyParallel: true,
@@ -36,9 +38,15 @@ export default defineConfig({
   projects: [
     ...generalBrowserProjects.map((project) => ({
       name: project.name,
-      testIgnore: [...CONNECTED_MOCK_TESTS],
+      testIgnore: [...CONNECTED_MOCK_TESTS, ...WEBKIT_TESTS],
       use: project.use,
     })),
+    {
+      name: 'webkit',
+      testMatch: [...WEBKIT_TESTS],
+      testIgnore: [...CONNECTED_MOCK_TESTS],
+      use: { ...devices['Desktop Safari'] },
+    },
     {
       name: 'chromium-devices-mock',
       testMatch: [...CONNECTED_MOCK_TESTS],

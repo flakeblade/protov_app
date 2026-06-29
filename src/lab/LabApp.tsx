@@ -5,12 +5,14 @@ import { useDisclosure } from '@mantine/hooks'
 import { AppShell, Burger } from '@mantine/core'
 import { AppNavbar } from '../components/AppNavbar'
 import { HomeSpotlight } from '../components/home/HomeSpotlight'
+import { LabUnsupportedNotice } from './components/lab_unsupported_notice'
 import { NavbarSimple } from './navbar'
 import { DevicesPage } from './pages/devices'
 import { ControlsPage } from './pages/controls'
 import { GraphsPage } from './pages/graphs'
 import { TelemetryPage } from './pages/telemetry'
 import { NotFoundView } from '../pages/NotFoundPage'
+import { isLabSupported } from './support/lab-support'
 import { isPathAllowedInView, LabViewProvider, useLabView } from './lab_view'
 
 function LabRoutes() {
@@ -64,6 +66,16 @@ export default function LabApp() {
       closeMobile()
     }
   }, [location.pathname, isMobile, closeMobile])
+
+  if (!isLabSupported()) {
+    return (
+      <>
+        <HomeSpotlight />
+        <AppNavbar />
+        <LabUnsupportedNotice />
+      </>
+    )
+  }
 
   return (
     <LabViewProvider>
