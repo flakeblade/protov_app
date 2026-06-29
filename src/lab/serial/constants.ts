@@ -7,7 +7,7 @@ export const USB_CDC_SETTLE_MS = 250
 
 /** Official ProtoV MINI USB identifiers. */
 export const PROTOV_USB_VENDOR_ID = 0x2e8a
-export const PROTOV_USB_PRODUCT_ID = 0x111f
+export const PROTOV_USB_PRODUCT_ID = 0x112B
 
 export const PROTOV_WEB_SERIAL_FILTERS: SerialPortFilter[] = [
   { usbVendorId: PROTOV_USB_VENDOR_ID, usbProductId: PROTOV_USB_PRODUCT_ID },
