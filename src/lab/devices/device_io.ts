@@ -21,7 +21,9 @@ const CHANNEL_MAP: Record<string, (typeof SCPI_CHANNELS)[number]> = {
 }
 
 export const DEVICE_POLL_INTERVAL_MS = 400
+export const VOLTAGE_MIN = 0.2
 export const VOLTAGE_MAX = 20
+export const CURRENT_MIN = 0
 export const CURRENT_MAX = 5
 
 export type SetpointParam = 'voltage' | 'current' | 'ovp' | 'ocp'

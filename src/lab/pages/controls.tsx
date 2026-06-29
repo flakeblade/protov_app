@@ -29,7 +29,7 @@ import {
 } from '../devices/channel-mode'
 import { useDeviceStore } from '../devices/device_store'
 import type { SetpointParam } from '../devices/device_io'
-import { CURRENT_MAX, VOLTAGE_MAX } from '../devices/device_io'
+import { CURRENT_MAX, CURRENT_MIN, VOLTAGE_MAX, VOLTAGE_MIN } from '../devices/device_io'
 import { useLabView } from '../lab_view'
 import classes from './controls.module.css'
 
@@ -93,17 +93,33 @@ function draftDirty(draft: SetpointTextDraft, committed: ChannelSetpoints): bool
   )
 }
 
+function setpointInRange(text: string, min: number, max: number): boolean {
+  const parsed = parseSetpoint(text)
+  if (parsed === null) return false
+  return parsed >= min && parsed <= max
+}
+
+function draftInRange(draft: SetpointTextDraft): boolean {
+  return (
+    setpointInRange(draft.voltage, VOLTAGE_MIN, VOLTAGE_MAX) &&
+    setpointInRange(draft.current, CURRENT_MIN, CURRENT_MAX) &&
+    setpointInRange(draft.ovp, VOLTAGE_MIN, VOLTAGE_MAX) &&
+    setpointInRange(draft.ocp, CURRENT_MIN, CURRENT_MAX)
+  )
+}
+
 function parseDraft(draft: SetpointTextDraft): ChannelSetpoints | null {
   const voltage = parseSetpoint(draft.voltage)
   const current = parseSetpoint(draft.current)
   const ovp = parseSetpoint(draft.ovp)
   const ocp = parseSetpoint(draft.ocp)
   if (voltage === null || current === null || ovp === null || ocp === null) return null
+  if (!draftInRange(draft)) return null
   return {
-    voltage: Math.min(VOLTAGE_MAX, Math.max(0, voltage)),
-    current: Math.min(CURRENT_MAX, Math.max(0, current)),
-    ovp: Math.min(VOLTAGE_MAX, Math.max(0, ovp)),
-    ocp: Math.min(CURRENT_MAX, Math.max(0, ocp)),
+    voltage: Math.min(VOLTAGE_MAX, Math.max(VOLTAGE_MIN, voltage)),
+    current: Math.min(CURRENT_MAX, Math.max(CURRENT_MIN, current)),
+    ovp: Math.min(VOLTAGE_MAX, Math.max(VOLTAGE_MIN, ovp)),
+    ocp: Math.min(CURRENT_MAX, Math.max(CURRENT_MIN, ocp)),
   }
 }
 
@@ -210,13 +226,22 @@ function LimitField({
   tooltip,
   onTextChange,
 }: LimitFieldProps) {
-  const dirty = draftTextDirty(text, committed)
+  const outOfRange = !setpointInRange(text, min, max)
+  const dirty = draftTextDirty(text, committed) && !outOfRange
 
   const handleBlur = () => {
     const parsed = parseSetpoint(text)
     if (parsed === null) return
-    onTextChange(formatSetpoint(parsed))
+    const clamped = Math.min(max, Math.max(min, parsed))
+    onTextChange(formatSetpoint(clamped))
   }
+
+  const inputClassName = [
+    classes.limitInputField,
+    outOfRange ? classes.limitInputError : dirty ? classes.limitInputDirty : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <Tooltip label={tooltip}>
@@ -224,9 +249,7 @@ function LimitField({
         <Text className={classes.limitLabel}>{label}</Text>
         <NumberInput
           className={classes.limitInput}
-          classNames={{
-            input: `${classes.limitInputField}${dirty ? ` ${classes.limitInputDirty}` : ''}`,
-          }}
+          classNames={{ input: inputClassName }}
           value={text}
           onChange={(next) => onTextChange(String(next ?? ''))}
           onBlur={handleBlur}
@@ -278,7 +301,7 @@ function ParameterRow({
   onSetTextChange,
   onProtectionTextChange,
 }: ParameterRowProps) {
-  const placeholder = `0.${'0'.repeat(DECIMALS)}–${max}.${'0'.repeat(DECIMALS)}`
+  const placeholder = `${formatSetpoint(min)}–${formatSetpoint(max)}`
 
   return (
     <div className={classes.parameterRow}>
@@ -347,7 +370,7 @@ function ChannelCard({
 
   const dirty = draftDirty(draftText, committed)
   const parsedDraft = parseDraft(draftText)
-  const canApply = dirty && parsedDraft !== null
+  const canApply = dirty && parsedDraft !== null && draftInRange(draftText)
 
   const updateDraftText = (key: SetpointKey, text: string) => {
     setDraftText((previous) => ({ ...previous, [key]: text }))
@@ -425,15 +448,15 @@ function ChannelCard({
             label="Voltage"
             liveValue={channel.measuredVoltage}
             unit="V"
-            min={0}
+            min={VOLTAGE_MIN}
             max={VOLTAGE_MAX}
-            setTooltip="Target voltage on output"
+            setTooltip={`Target voltage on output (${formatSetpoint(VOLTAGE_MIN)}–${formatSetpoint(VOLTAGE_MAX)} V)`}
             protectionLabel="OVP"
             setText={draftText.voltage}
             protectionText={draftText.ovp}
             committedSet={committed.voltage}
             committedProtection={committed.ovp}
-            protectionTooltip="Over-voltage protection limit"
+            protectionTooltip={`Over-voltage protection limit (${formatSetpoint(VOLTAGE_MIN)}–${formatSetpoint(VOLTAGE_MAX)} V)`}
             showProtection={isEngineering}
             onSetTextChange={(text) => updateDraftText('voltage', text)}
             onProtectionTextChange={(text) => updateDraftText('ovp', text)}
@@ -443,15 +466,15 @@ function ChannelCard({
             label="Current"
             liveValue={channel.measuredCurrent}
             unit="A"
-            min={0}
+            min={CURRENT_MIN}
             max={CURRENT_MAX}
-            setTooltip="Target current on output"
+            setTooltip={`Target current on output (${formatSetpoint(CURRENT_MIN)}–${formatSetpoint(CURRENT_MAX)} A)`}
             protectionLabel="OCP"
             setText={draftText.current}
             protectionText={draftText.ocp}
             committedSet={committed.current}
             committedProtection={committed.ocp}
-            protectionTooltip="Over-current protection limit"
+            protectionTooltip={`Over-current protection limit (${formatSetpoint(CURRENT_MIN)}–${formatSetpoint(CURRENT_MAX)} A)`}
             showProtection={isEngineering}
             onSetTextChange={(text) => updateDraftText('current', text)}
             onProtectionTextChange={(text) => updateDraftText('ocp', text)}

@@ -106,6 +106,10 @@
   border-color: light-dark(var(--mantine-color-blue-4), var(--mantine-color-blue-5));
 }
 
+.limitInputError {
+  border-color: light-dark(var(--mantine-color-red-5), var(--mantine-color-red-4));
+}
+
 .applyButton {
   align-self: center;
   font-weight: 500;
