@@ -20,12 +20,20 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/devices-connected.spec.ts', '**/controls-connected.spec.ts'],
+      testIgnore: [
+        '**/devices-connected.spec.ts',
+        '**/controls-connected.spec.ts',
+        '**/graphs-connected.spec.ts',
+      ],
       use: { ...devices['Desktop Chrome'] },
     },
     {
       name: 'chromium-devices-mock',
-      testMatch: ['**/devices-connected.spec.ts', '**/controls-connected.spec.ts'],
+      testMatch: [
+        '**/devices-connected.spec.ts',
+        '**/controls-connected.spec.ts',
+        '**/graphs-connected.spec.ts',
+      ],
       fullyParallel: false,
       workers: 1,
       use: { ...devices['Desktop Chrome'] },

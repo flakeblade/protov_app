@@ -71,6 +71,12 @@ export class LabPage {
     await engineering.click()
   }
 
+  async setStandardView() {
+    const standard = this.sidebar().getByText('Standard', { exact: true })
+    await standard.scrollIntoViewIfNeeded()
+    await standard.click()
+  }
+
   async expectDevices() {
     await this.page.waitForURL(new RegExp(`${routes.lab.devices}$`))
   }

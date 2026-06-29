@@ -25,11 +25,13 @@ import {
   bufferSampleCountIndex,
   bufferTimeSpanMs,
   formatBufferSampleCount,
+  formatBufferMarkCompact,
 } from '../graphs/buffer-size'
 import { channelSeriesKey, combinedDataExtent, dataExtentFromSeries } from '../graphs/channel-series'
 import { useGraphStore } from '../graphs/graph_store'
 import {
   formatSamplingRate,
+  formatSamplingRateMark,
   SAMPLING_RATES_HZ,
   samplingRateFromIndex,
   samplingRateIndex,
@@ -93,14 +95,17 @@ const GraphSettingsPanel = memo(function GraphSettingsPanel({
 
   const rateMarks = SAMPLING_RATES_HZ.map((rate, index) => ({
     value: index,
-    label: index === 0 || index === SAMPLING_RATES_HZ.length - 1 ? formatSamplingRate(rate) : undefined,
+    label:
+      index === 0 || index === SAMPLING_RATES_HZ.length - 1
+        ? formatSamplingRateMark(rate)
+        : undefined,
   }))
 
   const bufferMarks = BUFFER_SAMPLE_COUNTS.map((count, index) => ({
     value: index,
     label:
       index === 0 || index === BUFFER_SAMPLE_COUNTS.length - 1
-        ? formatBufferSampleCount(count)
+        ? formatBufferMarkCompact(count)
         : undefined,
   }))
 
@@ -118,6 +123,7 @@ const GraphSettingsPanel = memo(function GraphSettingsPanel({
               </Text>
               <Text className={classes.rateValue}>{formatSamplingRate(sampleRateHz)}</Text>
               <Slider
+                classNames={{ root: classes.settingsSlider }}
                 value={rateIndex}
                 onChange={onSampleRateChange}
                 min={0}
@@ -126,7 +132,6 @@ const GraphSettingsPanel = memo(function GraphSettingsPanel({
                 marks={rateMarks}
                 label={null}
                 disabled={isRecording}
-                mb="lg"
               />
             </Stack>
 
@@ -142,6 +147,7 @@ const GraphSettingsPanel = memo(function GraphSettingsPanel({
                 </Text>
                 <Text className={classes.rateValue}>{formatBufferSampleCount(bufferSampleCount)}</Text>
                 <Slider
+                  classNames={{ root: classes.settingsSlider }}
                   value={bufferIndex}
                   onChange={onBufferSampleCountChange}
                   min={0}
@@ -149,7 +155,6 @@ const GraphSettingsPanel = memo(function GraphSettingsPanel({
                   step={1}
                   marks={bufferMarks}
                   label={null}
-                  mb="lg"
                 />
               </Stack>
             ) : null}
@@ -320,9 +325,8 @@ export function GraphsPage() {
   )
 
   const handleStartRecording = useCallback(() => {
-    setFollowLive(true)
     startRecording()
-  }, [setFollowLive, startRecording])
+  }, [startRecording])
 
   const handleClearRecording = useCallback(() => {
     clearRecording()

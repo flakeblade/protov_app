@@ -67,9 +67,21 @@ export function useGraphTimeNavigation({
   const fitRunWidthRef = useRef(fitRunWidth)
   fitRunWidthRef.current = fitRunWidth
 
+  const prevIsRecordingRef = useRef(isRecording)
+
   useEffect(() => {
+    const wasRecording = prevIsRecordingRef.current
+    prevIsRecordingRef.current = isRecording
+
     if (!isRecording) {
       setFitRunWidthState(false)
+      return
+    }
+
+    if (!wasRecording) {
+      setFitRunWidthState(true)
+      setFollowLiveState(true)
+      setWindow(fitFullRun(dataExtentRef.current, maxSpanRef.current))
     }
   }, [isRecording])
 

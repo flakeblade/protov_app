@@ -13,6 +13,13 @@ export function formatSamplingRate(hz: number): string {
   return `${hz.toFixed(1)} Hz`
 }
 
+/** Compact tick labels for rate sliders (avoid mark overflow). */
+export function formatSamplingRateMark(hz: number): string {
+  if (hz >= 10) return `${hz}`
+  if (hz >= 1) return Number.isInteger(hz) ? `${hz}` : hz.toFixed(1)
+  return hz.toFixed(1)
+}
+
 export function samplingRateIndex(hz: number): number {
   const index = SAMPLING_RATES_HZ.findIndex((rate) => rate === hz)
   return index >= 0 ? index : SAMPLING_RATES_HZ.indexOf(DEFAULT_SAMPLING_RATE_HZ)

@@ -6,6 +6,26 @@
   flex: 1;
   min-width: min(100%, 22rem);
   max-width: 32rem;
+  overflow: hidden;
+}
+
+.settingsSlider {
+  margin-top: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-xl);
+  padding-inline: 0.625rem;
+}
+
+.settingsSlider :global(.mantine-Slider-markLabel) {
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.settingsSlider :global(.mantine-Slider-markWrapper:first-of-type .mantine-Slider-markLabel) {
+  transform: translateX(-2px);
+}
+
+.settingsSlider :global(.mantine-Slider-markWrapper:last-of-type .mantine-Slider-markLabel) {
+  transform: translateX(calc(-100% + 2px));
 }
 
 .recordingColumn {

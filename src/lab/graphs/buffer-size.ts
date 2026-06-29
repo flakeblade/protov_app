@@ -12,6 +12,13 @@ export function formatBufferSampleCount(count: number): string {
   return `${count} samples`
 }
 
+/** Compact tick labels for buffer sliders (avoid mark overflow). */
+export function formatBufferMarkCompact(count: number): string {
+  if (count >= 10_000) return '10k'
+  if (count >= 1000) return `${count / 1000}k`
+  return String(count)
+}
+
 export function bufferSampleCountIndex(count: number): number {
   const index = BUFFER_SAMPLE_COUNTS.findIndex((value) => value === count)
   return index >= 0 ? index : BUFFER_SAMPLE_COUNTS.indexOf(DEFAULT_BUFFER_SAMPLE_COUNT)
