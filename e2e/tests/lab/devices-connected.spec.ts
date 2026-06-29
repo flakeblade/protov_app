@@ -101,3 +101,44 @@ test.describe('Lab devices page (connected mock)', () => {
     await expect(page.getByText('Channel A').first()).toBeVisible()
   })
 })
+
+test.describe('Lab devices page (notifications)', () => {
+  test.beforeEach(async ({ lab }) => {
+    await lab.gotoDevices()
+    await lab.setEngineeringView()
+  })
+
+  test('shows a notification when a device connects', async ({ lab, mockControl }) => {
+    await mockControl.resetSlot(0)
+    await lab.clickConnect()
+
+    await lab.expectNotification('Device connected', 'ProtoV MINI (550e8400) added.')
+  })
+
+  test('shows a notification when a device is disconnected', async ({ lab, mockControl }) => {
+    await mockControl.resetSlot(0)
+    await lab.clickConnect()
+
+    await lab.clickDisconnect('550e8400')
+    await lab.expectNotification(
+      'Device disconnected',
+      'ProtoV MINI (550e8400) was disconnected.',
+    )
+  })
+
+  test('shows a notification when a device connection is suddenly lost', async ({
+    lab,
+    mockControl,
+  }) => {
+    await mockControl.resetSlot(0)
+    await lab.clickConnect()
+
+    await lab.forceBridgeConnectionLost()
+    await lab.expectNotification(
+      'Device connection lost',
+      'ProtoV MINI (550e8400) was unplugged or lost.',
+    )
+    await lab.expectDeviceCount(0)
+    await lab.expectDevicesEmptyState()
+  })
+})

@@ -143,6 +143,31 @@ export class LabPage {
     await expect(this.connectedDeviceCards()).toHaveCount(before + 1, { timeout: 15_000 })
   }
 
+  async expectNotification(title: string, message?: string) {
+    const notification = this.page.getByRole('alert').filter({ hasText: title })
+    await expect(notification).toBeVisible({ timeout: 10_000 })
+    if (message) {
+      await expect(notification).toContainText(message)
+    }
+  }
+
+  async forceBridgeConnectionLost(deviceIndex = 0) {
+    await this.page.evaluate((index) => {
+      const OPEN = 1
+      const registry = (window as Window & { __protovBridgeSockets?: WebSocket[] })
+        .__protovBridgeSockets
+      if (!registry?.length) {
+        throw new Error('No bridge WebSockets registered — is the init script active?')
+      }
+      const open = registry.filter((socket) => socket.readyState === OPEN)
+      if (open.length === 0) {
+        throw new Error('No open bridge WebSockets')
+      }
+      const target = open[index] ?? open[open.length - 1]!
+      target.close()
+    }, deviceIndex)
+  }
+
   async expectDeviceCount(count: number) {
     await expect(this.connectedDeviceCards()).toHaveCount(count)
   }
