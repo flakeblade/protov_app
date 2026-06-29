@@ -166,6 +166,14 @@ export class MockControlClient {
     }
     return snapshot
   }
+
+  async displaySettings(slot: number): Promise<{ lcd: number; led: number }> {
+    const state = await this.status(slot)
+    return {
+      lcd: Number(state.lcd_brightness ?? 128),
+      led: Number(state.led_brightness ?? 255),
+    }
+  }
 }
 
 export const mockControl = new MockControlClient()
