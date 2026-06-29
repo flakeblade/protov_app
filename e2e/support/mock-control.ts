@@ -96,6 +96,22 @@ function assertOk(response: ControlResponse, context: string): void {
   }
 }
 
+export interface MockChannelSnapshot {
+  voltage: number
+  current: number
+  ovp: number
+  ocp: number
+  output: boolean
+  prot_latched?: boolean
+  latched_mode?: string
+  color?: [number, number, number]
+  measured?: {
+    voltage: number
+    current: number
+    power: number
+  }
+}
+
 export class MockControlClient {
   async ping(): Promise<void> {
     await scpiHealthCheck()
@@ -136,6 +152,19 @@ export class MockControlClient {
       throw new Error(`status slot ${slot} returned no state`)
     }
     return response.state
+  }
+
+  async channelSnapshot(
+    slot: number,
+    channel: 'CH1' | 'CH2',
+  ): Promise<MockChannelSnapshot> {
+    const state = await this.status(slot)
+    const channels = state.channels as Record<string, MockChannelSnapshot> | undefined
+    const snapshot = channels?.[channel]
+    if (!snapshot) {
+      throw new Error(`Missing ${channel} in mock slot ${slot} status`)
+    }
+    return snapshot
   }
 }
 
