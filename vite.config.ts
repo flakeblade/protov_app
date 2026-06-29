@@ -1,16 +1,26 @@
+import { copyFileSync, readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
 import remarkGfm from 'remark-gfm'
 import remarkFrontmatter from 'remark-frontmatter'
 import rehypeHighlight from 'rehype-highlight'
-import { copyFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+
+const appRoot = dirname(fileURLToPath(import.meta.url))
+const appVersion = (JSON.parse(readFileSync(resolve(appRoot, 'package.json'), 'utf8')) as { version: string })
+  .version
+const buildYear = String(new Date().getFullYear())
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   // base: command === 'build' || isPreview ? '/protov_app/' : '/',
   base: '/',
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __BUILD_YEAR__: JSON.stringify(buildYear),
+  },
   plugins: [
     mdx({
       remarkPlugins: [remarkGfm, remarkFrontmatter],

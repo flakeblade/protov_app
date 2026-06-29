@@ -1,0 +1,99 @@
+name: E2E
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HOST_TARGET: x86_64-unknown-linux-gnu
+  PROTOV_MOCK_SCPI_WS: ws://127.0.0.1:8765
+  PROTOV_MOCK_CTRL_WS: ws://127.0.0.1:8766
+  VITE_PROTOV_MOCK_WS: ws://127.0.0.1:8765
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout app
+        uses: actions/checkout@v4
+
+      - name: Checkout protov (mock server)
+        uses: actions/checkout@v4
+        with:
+          repository: flakeblade/protov
+          path: protov
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Setup just
+        uses: extractions/setup-just@v2
+
+      - name: Cache protov build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: protov
+
+      - name: Build mock server
+        working-directory: protov
+        run: just build-mock
+
+      - name: Start mock server
+        working-directory: protov
+        run: |
+          just run-mock > "$RUNNER_TEMP/protov-mock.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/protov-mock.pid"
+
+      - name: Wait for mock server
+        run: |
+          for attempt in $(seq 1 90); do
+            if timeout 1 bash -c 'echo > /dev/tcp/127.0.0.1/8765' 2>/dev/null \
+              && timeout 1 bash -c 'echo > /dev/tcp/127.0.0.1/8766' 2>/dev/null; then
+              echo "Mock server ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Mock server did not become ready in time"
+          cat "$RUNNER_TEMP/protov-mock.log" || true
+          exit 1
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit msedge
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          CI: true
+
+      - name: Stop mock server
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/protov-mock.pid" ]]; then
+            kill "$(cat "$RUNNER_TEMP/protov-mock.pid")" 2>/dev/null || true
+          fi
+
+      - name: Upload mock server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protov-mock-log
+          path: ${{ runner.temp }}/protov-mock.log
+          if-no-files-found: ignore

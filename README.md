@@ -40,6 +40,15 @@ Output is written to `dist/` as static assets. A `404.html` copy is generated fo
 
 ## Deploy to GitHub Pages
 
+Production deploys run automatically when you push a version tag (`v*`), via `.github/workflows/pages.yml`.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Manual deploy from a local build:
+
 ```bash
 npm run deploy
 ```

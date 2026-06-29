@@ -1,7 +1,7 @@
 {
   "name": "protov_app",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "homepage": "https://flakeblade.github.io/protov_app/",
   "engines": {

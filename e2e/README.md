@@ -37,6 +37,12 @@ npm run test:e2e -- e2e/tests/general --project=chromium --project=msedge --proj
 # WebKit / Safari smoke tests:
 npm run test:e2e -- e2e/tests/general/webkit.spec.ts --project=webkit
 
+## CI
+
+GitHub Actions workflow `.github/workflows/e2e.yml` runs on every push and pull request. It checks out the [protov](https://github.com/flakeblade/protov) firmware repo, builds the mock with `just build-mock`, starts `just run-mock`, then runs the full Playwright suite (including connected lab tests).
+
+GitHub Pages deploys from version tags (`v*`) via `.github/workflows/pages.yml`.
+
 # Connected mock suite only:
 npm run test:e2e -- --project=chromium-devices-mock
 ```

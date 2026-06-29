@@ -8,8 +8,8 @@ export function SidebarBrand() {
         Flake &amp; Blade Robotics Design Inc.
       </Text>
       <Group gap="xs" className={classes.meta}>
-        <Text className={classes.metaItem}>© 2026</Text>
-        <Text className={classes.metaItem}>v0.1.0</Text>
+        <Text className={classes.metaItem}>&copy; {__BUILD_YEAR__}</Text>
+        <Text className={classes.metaItem}>v{__APP_VERSION__}</Text>
       </Group>
     </div>
   )
