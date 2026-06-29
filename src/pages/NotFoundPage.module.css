@@ -1,0 +1,39 @@
+.page {
+  min-height: 100vh;
+  background: var(--mantine-color-body);
+}
+
+.main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 60px);
+  padding: calc(60px + var(--mantine-spacing-xl)) var(--mantine-spacing-md)
+    var(--mantine-spacing-xl);
+}
+
+.card {
+  width: 100%;
+  max-width: 28rem;
+  text-align: center;
+}
+
+.logo {
+  height: 2.5rem;
+  width: auto;
+  margin-inline: auto;
+}
+
+.code {
+  font-size: clamp(4rem, 14vw, 6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.brandMark {
+  height: 1.25rem;
+  width: auto;
+  opacity: 0.55;
+}

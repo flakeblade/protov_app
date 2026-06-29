@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 import { routes } from '../support/constants'
 import type { ColorScheme } from '../support/theme'
@@ -49,5 +49,18 @@ export class AppPage {
 
   async expectDocs() {
     await this.page.waitForURL(/\/docs(\/|$)/)
+  }
+
+  async gotoNotFound(path = '/this-page-does-not-exist') {
+    await this.page.goto(path)
+  }
+
+  async expectNotFoundPage() {
+    const main = this.page.getByRole('main')
+    await expect(this.page.getByRole('heading', { name: '404', exact: true })).toBeVisible()
+    await expect(this.page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+    await expect(main.getByRole('link', { name: 'Go home' })).toBeVisible()
+    await expect(main.getByRole('link', { name: 'Open lab' })).toBeVisible()
+    await expect(main.getByRole('link', { name: 'Docs' })).toBeVisible()
   }
 }

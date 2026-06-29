@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import DocsPage from './pages/DocsPage'
 import HomePage from './pages/HomePage'
+import NotFoundPage from './pages/NotFoundPage'
 import LabApp from './lab/LabApp'
 import { DeviceStoreProvider } from './lab/devices/device_store'
 import { GraphStoreProvider } from './lab/graphs/graph_store'
@@ -14,6 +15,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/lab/*" element={<LabApp />} />
             <Route path="/docs/*" element={<DocsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </GraphStoreProvider>
       </DeviceStoreProvider>

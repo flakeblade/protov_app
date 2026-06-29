@@ -10,6 +10,7 @@ import { DevicesPage } from './pages/devices'
 import { ControlsPage } from './pages/controls'
 import { GraphsPage } from './pages/graphs'
 import { TelemetryPage } from './pages/telemetry'
+import { NotFoundView } from '../pages/NotFoundPage'
 import { isPathAllowedInView, LabViewProvider, useLabView } from './lab_view'
 
 function LabRoutes() {
@@ -30,6 +31,7 @@ function LabRoutes() {
       <Route path="controls" element={<ControlsPage />} />
       <Route path="graphs" element={<GraphsPage />} />
       <Route path="telemetry" element={<TelemetryPage />} />
+      <Route path="*" element={<NotFoundView />} />
     </Routes>
   )
 }
