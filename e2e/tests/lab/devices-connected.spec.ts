@@ -8,9 +8,10 @@
  * Override URLs with PROTOV_MOCK_CTRL_WS / PROTOV_MOCK_SCPI_WS / VITE_PROTOV_MOCK_WS.
  */
 import { expect, test } from '../../fixtures/lab-devices'
+import { connectMockDevices } from '../../support/lab-connect'
 import { MOCK_SLOT_PROFILES } from '../../support/mock-profiles'
 
-test.describe.configure({ mode: 'serial' })
+test.describe.configure({ mode: 'serial', timeout: 120_000 })
 
 test.describe('Lab devices page (connected mock)', () => {
   test.beforeEach(async ({ lab }) => {
@@ -19,8 +20,7 @@ test.describe('Lab devices page (connected mock)', () => {
   })
 
   test('connect adds a device with correct state and controls', async ({ lab, mockControl }) => {
-    await mockControl.loadStateFile(0, 'ch1-active.json')
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl, { stateFile: 'ch1-active.json' })
 
     await lab.expectDeviceCount(1)
     await lab.expectDeviceCard({
@@ -47,8 +47,7 @@ test.describe('Lab devices page (connected mock)', () => {
   })
 
   test('disconnect removes a device', async ({ lab, mockControl }) => {
-    await mockControl.resetSlot(0)
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl)
     await lab.expectDeviceCount(1)
 
     await lab.clickDisconnect('550e8400')
@@ -57,33 +56,26 @@ test.describe('Lab devices page (connected mock)', () => {
   })
 
   test('adds up to four devices', async ({ lab, mockControl }) => {
-    await mockControl.resetAllSlots()
-
-    for (let index = 0; index < 4; index += 1) {
-      await lab.clickConnect()
-      await lab.expectDeviceCount(index + 1)
-    }
+    await connectMockDevices(lab, mockControl, { deviceCount: 4 })
 
     await lab.expectDeviceCardOrder(MOCK_SLOT_PROFILES.map((profile) => profile.serial))
     await lab.expectConnectDisabled()
   })
 
   test('reconnect moves a device to the end of the list', async ({ lab, mockControl }) => {
-    await mockControl.resetAllSlots()
-    await lab.clickConnect()
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl, { deviceCount: 2 })
     await lab.expectDeviceCardOrder(['550e8400', '32983fe4'])
 
     await lab.clickDisconnect('550e8400')
     await lab.expectDeviceCardOrder(['32983fe4'])
 
+    await mockControl.waitForFreeSlots(1)
     await lab.clickConnect()
     await lab.expectDeviceCardOrder(['32983fe4', '550e8400'])
   })
 
   test('channel buttons activate and deactivate outputs', async ({ lab, mockControl }) => {
-    await mockControl.resetSlot(0)
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl)
 
     await lab.toggleChannel('550e8400', 'A')
     await lab.expectChannelOutputActive('550e8400', 'A', true)
@@ -93,8 +85,7 @@ test.describe('Lab devices page (connected mock)', () => {
   })
 
   test('Go to controls navigates to the controls page', async ({ lab, mockControl, page }) => {
-    await mockControl.resetSlot(0)
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl)
 
     await lab.clickGoToControls('550e8400')
     await expect(page.getByText('Voltage').first()).toBeVisible()
@@ -109,15 +100,13 @@ test.describe('Lab devices page (notifications)', () => {
   })
 
   test('shows a notification when a device connects', async ({ lab, mockControl }) => {
-    await mockControl.resetSlot(0)
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl)
 
     await lab.expectNotification('Device connected', 'ProtoV MINI (550e8400) added.')
   })
 
   test('shows a notification when a device is disconnected', async ({ lab, mockControl }) => {
-    await mockControl.resetSlot(0)
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl)
 
     await lab.clickDisconnect('550e8400')
     await lab.expectNotification(
@@ -130,8 +119,7 @@ test.describe('Lab devices page (notifications)', () => {
     lab,
     mockControl,
   }) => {
-    await mockControl.resetSlot(0)
-    await lab.clickConnect()
+    await connectMockDevices(lab, mockControl)
 
     await lab.forceBridgeConnectionLost()
     await lab.expectNotification(

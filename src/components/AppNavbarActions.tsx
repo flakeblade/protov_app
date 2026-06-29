@@ -79,7 +79,7 @@ export function AppNavbarActions() {
       )}
       {page !== 'lab' && (
         <NavActionButton
-          to="/lab"
+          to="/lab/devices"
           icon={<IconFlask size={16} />}
           label="Lab"
           className={classes.navButton}

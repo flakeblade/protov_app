@@ -6,6 +6,7 @@
  *   Terminal 2 — npm run dev (Playwright starts this automatically)
  */
 import { expect, test } from '../../fixtures/lab-devices'
+import { connectMockDevices } from '../../support/lab-connect'
 import type { GraphsPage } from '../../pages/graphs.page'
 import type { LabPage } from '../../pages/lab.page'
 import type { MockControlClient } from '../../support/mock-control'
@@ -13,28 +14,14 @@ import {
   BUFFER_SAMPLE_COUNTS,
 } from '../../support/graph-settings'
 
-test.describe.configure({ mode: 'serial', timeout: 90_000 })
+test.describe.configure({ mode: 'serial', timeout: 120_000 })
 
 async function connectOnGraphs(
   lab: LabPage,
   mockControl: MockControlClient,
   options: { slot?: number; stateFile?: string; deviceCount?: number } = {},
 ) {
-  const { slot = 0, stateFile = 'default.json', deviceCount = 1 } = options
-
-  await lab.gotoDevices()
-  await lab.setEngineeringView()
-  await mockControl.resetAllSlots()
-
-  for (let index = 0; index < deviceCount; index += 1) {
-    if (index === slot) {
-      await mockControl.loadStateFile(index, stateFile)
-    } else {
-      await mockControl.resetSlot(index)
-    }
-    await lab.clickConnect()
-  }
-
+  await connectMockDevices(lab, mockControl, { stateFile: 'default.json', ...options })
   await lab.openGraphs()
 }
 

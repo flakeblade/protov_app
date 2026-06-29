@@ -33,7 +33,9 @@ export class ControlsPage {
 
   async expectChannelMode(card: Locator, mode: string, fault = false) {
     const tag = card.locator('[class*="modeTag"]')
-    await expect(tag).toHaveText(mode)
+    await expect
+      .poll(async () => (await tag.textContent())?.trim(), { timeout: 20_000 })
+      .toBe(mode)
     if (fault) {
       await expect(tag).toHaveClass(/modeTagFault/)
     }
@@ -110,11 +112,9 @@ export class ControlsPage {
 
   async expectOutputOn(card: Locator, channelId: ChannelId, on: boolean) {
     const toggle = this.outputSwitch(card, channelId)
-    if (on) {
-      await expect(toggle).toBeChecked()
-    } else {
-      await expect(toggle).not.toBeChecked()
-    }
+    await expect
+      .poll(async () => toggle.isChecked(), { timeout: 20_000 })
+      .toBe(on)
   }
 
   colorPickerButton(card: Locator) {

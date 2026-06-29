@@ -34,14 +34,23 @@ export const test = base.extend<LabDevicesFixtures>({
   },
 
   mockControl: async ({ lab }, use) => {
-    await mockControl.ping()
-
     const cleanup = async () => {
-      await lab.gotoDevices()
-      await lab.disconnectAllDevices()
-      await mockControl.resetAllSlots()
+      try {
+        await lab.forceCloseBridgeSockets()
+        await lab.gotoDevices()
+        await lab.disconnectAllDevices()
+      } catch {
+        // Best-effort UI cleanup; still release mock slots below.
+      }
+      try {
+        await mockControl.releaseAllSlots()
+      } catch {
+        await mockControl.resetAllSlots()
+      }
+      await mockControl.waitForFreeSlots(4)
     }
 
+    await mockControl.ping()
     await cleanup()
     await use(mockControl)
     await cleanup()

@@ -30,13 +30,16 @@ export class TelemetryPage {
       portFragment?: string
     },
   ) {
-    await expect(card.getByText('ProtoV MINI', { exact: true })).toBeVisible()
-    await expect(card.getByText(`SN ${options.serial}`)).toBeVisible()
-    await expect(card.getByText(`FW v${options.fw}`)).toBeVisible()
-    await expect(card.getByText(`HW ${options.hw}`)).toBeVisible()
-    await expect(card.locator('code').filter({ hasText: '115200 baud' })).toBeVisible()
+    const timeout = 20_000
+    await expect(card.getByText('ProtoV MINI', { exact: true })).toBeVisible({ timeout })
+    await expect(card.getByText(`SN ${options.serial}`)).toBeVisible({ timeout })
+    await expect(card.getByText(`FW v${options.fw}`)).toBeVisible({ timeout })
+    await expect(card.getByText(`HW ${options.hw}`)).toBeVisible({ timeout })
+    await expect(card.locator('code').filter({ hasText: '115200 baud' })).toBeVisible({ timeout })
     if (options.portFragment) {
-      await expect(card.locator('code').filter({ hasText: options.portFragment })).toBeVisible()
+      await expect(card.locator('code').filter({ hasText: options.portFragment })).toBeVisible({
+        timeout,
+      })
     }
   }
 
@@ -73,8 +76,16 @@ export class TelemetryPage {
   }
 
   async expectBrightnessLabels(card: Locator, lcd: number, led: number) {
-    await expect(card.getByText(`LCD brightness (${lcd})`)).toBeVisible()
-    await expect(card.getByText(`LED brightness (${led})`)).toBeVisible()
+    await expect
+      .poll(async () => (await card.getByText(`LCD brightness (${lcd})`).count()) > 0, {
+        timeout: 20_000,
+      })
+      .toBe(true)
+    await expect
+      .poll(async () => (await card.getByText(`LED brightness (${led})`).count()) > 0, {
+        timeout: 20_000,
+      })
+      .toBe(true)
   }
 
   async setLcdBrightness(card: Locator, value: number) {

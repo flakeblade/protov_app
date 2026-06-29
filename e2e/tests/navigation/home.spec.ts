@@ -7,11 +7,10 @@ test.describe('Home', () => {
     await expect(page.getByRole('banner')).toBeVisible()
   })
 
-  test('navigates to Lab from the navbar', async ({ page, app }) => {
+  test('navigates to Lab from the navbar', async ({ app }) => {
     await app.gotoHome()
     await app.clickNavLink('Lab')
     await app.expectLab()
-    await expect(page).toHaveURL(/\/lab\/devices/)
   })
 
   test('navigates to Docs from the navbar', async ({ page, app }) => {

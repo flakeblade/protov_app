@@ -27,6 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: flakeblade/protov
+          ref: mini
           path: protov
 
       - name: Setup Node.js
@@ -47,6 +48,12 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: protov
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit msedge
 
       - name: Build mock server
         working-directory: protov
@@ -72,14 +79,13 @@ jobs:
           cat "$RUNNER_TEMP/protov-mock.log" || true
           exit 1
 
-      - name: Install npm dependencies
-        run: npm ci
+      - name: Run connected mock E2E tests
+        run: npx playwright test --project=chromium-devices-mock
+        env:
+          CI: true
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit msedge
-
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: Run general E2E tests
+        run: npx playwright test --project=chromium --project=firefox --project=webkit --project=msedge
         env:
           CI: true
 

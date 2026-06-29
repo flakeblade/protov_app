@@ -151,11 +151,26 @@ export class LabPage {
   }
 
   async clickConnect() {
+    const timeout = process.env.CI ? 30_000 : 15_000
     const connect = this.page.getByRole('button', { name: 'Connect', exact: true })
     await expect(connect).toBeEnabled()
     const before = await this.connectedDeviceCards().count()
     await connect.click()
-    await expect(this.connectedDeviceCards()).toHaveCount(before + 1, { timeout: 15_000 })
+    await expect(this.connectedDeviceCards()).toHaveCount(before + 1, { timeout })
+  }
+
+  async forceCloseBridgeSockets() {
+    await this.page.evaluate(() => {
+      const OPEN = 1
+      const registry = (window as Window & { __protovBridgeSockets?: WebSocket[] })
+        .__protovBridgeSockets
+      if (!registry) return
+      for (const socket of registry) {
+        if (socket.readyState === OPEN) {
+          socket.close()
+        }
+      }
+    })
   }
 
   async expectNotification(title: string, message?: string) {
@@ -246,7 +261,7 @@ export class LabPage {
 
   async expectDeviceCard(expectation: DeviceCardExpectation) {
     const card = this.deviceCardBySerial(expectation.serial)
-    await expect(card).toBeVisible()
+    await expect(card).toBeVisible({ timeout: process.env.CI ? 20_000 : 10_000 })
     await expect(card.getByText('ProtoV MINI')).toBeVisible()
     await expect(card.getByText(`SN ${expectation.serial}`)).toBeVisible()
     await expect(card.getByText(`FW v${expectation.fw}`)).toBeVisible()

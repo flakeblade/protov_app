@@ -44,7 +44,7 @@ export class AppPage {
   }
 
   async expectLab() {
-    await this.page.waitForURL(/\/lab(\/|$)/)
+    await this.page.waitForURL(/\/lab\/devices\/?$/)
   }
 
   async expectDocs() {

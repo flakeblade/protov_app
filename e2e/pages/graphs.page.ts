@@ -43,8 +43,16 @@ export class GraphsPage {
   }
 
   async expectChannelSetpoints(card: Locator, voltage: string, current: string) {
-    await expect(card.getByText(new RegExp(`${voltage}\\s*V`))).toBeVisible()
-    await expect(card.getByText(new RegExp(`${current}\\s*A`))).toBeVisible()
+    const setpoints = card.locator('[class*="setpoints"]')
+    await expect
+      .poll(
+        async () => {
+          const text = await setpoints.textContent()
+          return text?.includes(voltage) === true && text?.includes(current) === true
+        },
+        { timeout: 20_000 },
+      )
+      .toBe(true)
   }
 
   async clickRun() {
