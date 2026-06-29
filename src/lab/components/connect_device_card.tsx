@@ -51,7 +51,7 @@ export function ConnectDeviceCard({
           </Text>
           {isMock ? (
             <Text size="xs" c="dimmed" ta="center">
-              Run <Code>npm run dev:mock</Code> in another terminal, then click Connect.
+              Start the Rust mock (<Code>just run-mock</Code> in protov), then click Connect.
             </Text>
           ) : isDevWebSerial ? (
             <Text size="xs" c="dimmed" ta="center">

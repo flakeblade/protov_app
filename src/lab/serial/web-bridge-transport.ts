@@ -21,7 +21,7 @@ function waitForWebSocket(url: string, timeoutMs: number): Promise<WebSocket> {
     })
     socket.addEventListener('error', () => {
       window.clearTimeout(timer)
-      reject(new Error('Mock device bridge unavailable — run npm run dev:mock'))
+      reject(new Error('Mock device bridge unavailable — start protov-hal-mock (just run-mock)'))
     })
   })
 }
