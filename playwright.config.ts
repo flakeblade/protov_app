@@ -20,6 +20,14 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: '**/devices-connected.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'chromium-devices-mock',
+      testMatch: '**/devices-connected.spec.ts',
+      fullyParallel: false,
+      workers: 1,
       use: { ...devices['Desktop Chrome'] },
     },
   ],
@@ -28,5 +36,8 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      VITE_PROTOV_MOCK_WS: process.env.VITE_PROTOV_MOCK_WS ?? 'ws://127.0.0.1:8765',
+    },
   },
 })

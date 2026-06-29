@@ -28,6 +28,20 @@ inst = rm.open_resource(f"ASRL{port}::INSTR", read_termination="\n", write_termi
 print(inst.query("*IDN?"))
 ```
 
+## Devices page E2E (Rust mock)
+
+The connected-device Playwright suite (`e2e/tests/lab/devices-connected.spec.ts`) expects the **Rust** mock (`protov-hal-mock`) already running — not this Python server:
+
+```bash
+# Terminal 1 (protov repo)
+just run-mock   # SCPI ws://127.0.0.1:8765, control ws://127.0.0.1:8766
+
+# Terminal 2 (protov_app)
+npm run test:e2e -- e2e/tests/lab/devices-connected.spec.ts --project=chromium-devices-mock
+```
+
+JSON presets for the control socket live in `e2e/states/` (copied from `protov-hal-mock/states/`).
+
 ## WebSocket bridge (browser dev)
 
 Browsers often cannot see socat/virtual serial ports in the WebSerial picker. The mock device therefore includes a **built-in WebSocket SCPI bridge** — one process, up to **four simultaneous browser connections**:
