@@ -53,7 +53,7 @@ Manual deploy from a local build:
 npm run deploy
 ```
 
-Live URL: [https://flakeblade.github.io/protov_app/](https://flakeblade.github.io/protov_app/)
+Live URL: [https://protov.app/](https://protov.app/)
 
 ## Project structure
 

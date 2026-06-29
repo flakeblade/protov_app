@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://flakeblade.github.io/protov_app/",
+  "homepage": "https://protov.app/",
   "engines": {
     "node": ">=24"
   },

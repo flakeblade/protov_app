@@ -15,7 +15,6 @@ const buildYear = String(new Date().getFullYear())
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
-  // base: command === 'build' || isPreview ? '/protov_app/' : '/',
   base: '/',
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
