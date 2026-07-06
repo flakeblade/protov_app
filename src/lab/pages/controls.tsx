@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { MantineColor } from '@mantine/core'
 import {
   Badge,
@@ -78,10 +78,11 @@ function parseSetpoint(text: string): number | null {
 
 function draftTextDirty(text: string, committed: number): boolean {
   const trimmed = text.trim()
-  if (!trimmed) return committed !== 0
+  const roundedCommitted = Math.round(committed * 10 ** DECIMALS) / 10 ** DECIMALS
+  if (!trimmed) return roundedCommitted !== 0
   const parsed = parseSetpoint(trimmed)
   if (parsed === null) return true
-  return parsed !== committed
+  return parsed !== roundedCommitted
 }
 
 function draftDirty(draft: SetpointTextDraft, committed: ChannelSetpoints): boolean {
@@ -212,6 +213,7 @@ interface LimitFieldProps {
   max: number
   placeholder: string
   tooltip: string
+  editing: boolean
   onTextChange: (text: string) => void
 }
 
@@ -224,10 +226,11 @@ function LimitField({
   max,
   placeholder,
   tooltip,
+  editing,
   onTextChange,
 }: LimitFieldProps) {
   const outOfRange = !setpointInRange(text, min, max)
-  const dirty = draftTextDirty(text, committed) && !outOfRange
+  const dirty = editing && draftTextDirty(text, committed) && !outOfRange
 
   const handleBlur = () => {
     const parsed = parseSetpoint(text)
@@ -248,6 +251,7 @@ function LimitField({
       <div className={classes.limitField}>
         <Text className={classes.limitLabel}>{label}</Text>
         <NumberInput
+          key={editing ? label : `${label}-${formatSetpoint(committed)}`}
           className={classes.limitInput}
           classNames={{ input: inputClassName }}
           value={text}
@@ -280,6 +284,7 @@ interface ParameterRowProps {
   committedProtection?: number
   protectionTooltip?: string
   showProtection?: boolean
+  editing: boolean
   onSetTextChange: (text: string) => void
   onProtectionTextChange?: (text: string) => void
 }
@@ -298,6 +303,7 @@ function ParameterRow({
   committedProtection = 0,
   protectionTooltip,
   showProtection = true,
+  editing,
   onSetTextChange,
   onProtectionTextChange,
 }: ParameterRowProps) {
@@ -317,6 +323,7 @@ function ParameterRow({
           max={max}
           placeholder={placeholder}
           tooltip={setTooltip}
+          editing={editing}
           onTextChange={onSetTextChange}
         />
         {showProtection && protectionLabel && protectionTooltip && onProtectionTextChange && (
@@ -329,6 +336,7 @@ function ParameterRow({
             max={max}
             placeholder={placeholder}
             tooltip={protectionTooltip}
+            editing={editing}
             onTextChange={onProtectionTextChange}
           />
         )}
@@ -361,19 +369,20 @@ function ChannelCard({
     () => channelSetpoints(channel),
     [channel.voltageSet, channel.currentSet, channel.ovp, channel.ocp],
   )
-  const [draftText, setDraftText] = useState(() => formatSetpointDraft(committed))
+  const committedDraft = useMemo(() => formatSetpointDraft(committed), [committed])
+  const [userDraft, setUserDraft] = useState<SetpointTextDraft | null>(null)
   const [applying, setApplying] = useState(false)
 
-  useEffect(() => {
-    setDraftText((previous) => (draftDirty(previous, committed) ? previous : formatSetpointDraft(committed)))
-  }, [committed])
-
-  const dirty = draftDirty(draftText, committed)
-  const parsedDraft = parseDraft(draftText)
-  const canApply = dirty && parsedDraft !== null && draftInRange(draftText)
+  const hasDraft = userDraft !== null && draftDirty(userDraft, committed)
+  const draftText = hasDraft ? userDraft : committedDraft
+  const parsedDraft = hasDraft ? parseDraft(draftText) : null
+  const canApply = hasDraft && parsedDraft !== null && draftInRange(draftText)
 
   const updateDraftText = (key: SetpointKey, text: string) => {
-    setDraftText((previous) => ({ ...previous, [key]: text }))
+    setUserDraft((previous) => {
+      const next = { ...(previous ?? committedDraft), [key]: text }
+      return draftDirty(next, committed) ? next : null
+    })
   }
 
   const handleApply = async () => {
@@ -389,7 +398,7 @@ function ChannelCard({
     setApplying(true)
     try {
       await onApplySetpoints(changes)
-      setDraftText(formatSetpointDraft(parsedDraft))
+      setUserDraft(null)
     } finally {
       setApplying(false)
     }
@@ -458,6 +467,7 @@ function ChannelCard({
             committedProtection={committed.ovp}
             protectionTooltip={`Over-voltage protection limit (${formatSetpoint(VOLTAGE_MIN)}–${formatSetpoint(VOLTAGE_MAX)} V)`}
             showProtection={isEngineering}
+            editing={hasDraft}
             onSetTextChange={(text) => updateDraftText('voltage', text)}
             onProtectionTextChange={(text) => updateDraftText('ovp', text)}
           />
@@ -476,6 +486,7 @@ function ChannelCard({
             committedProtection={committed.ocp}
             protectionTooltip={`Over-current protection limit (${formatSetpoint(CURRENT_MIN)}–${formatSetpoint(CURRENT_MAX)} A)`}
             showProtection={isEngineering}
+            editing={hasDraft}
             onSetTextChange={(text) => updateDraftText('current', text)}
             onProtectionTextChange={(text) => updateDraftText('ocp', text)}
           />
