@@ -259,6 +259,27 @@ export class LabPage {
     await this.expectChannelColor(chip, expectation.color, expectation.active)
   }
 
+  async expectChannelReadings(
+    serial: string,
+    channelId: ChannelId,
+    expectation: Pick<ChannelExpectation, 'voltage' | 'current'>,
+    timeoutMs = 20_000,
+  ) {
+    const chip = this.channelChip(this.deviceCardBySerial(serial), channelId)
+    await expect
+      .poll(
+        async () => {
+          const text = await chip.textContent()
+          return (
+            text?.includes(expectation.voltage) === true &&
+            text?.includes(expectation.current) === true
+          )
+        },
+        { timeout: timeoutMs },
+      )
+      .toBe(true)
+  }
+
   async expectDeviceCard(expectation: DeviceCardExpectation) {
     const card = this.deviceCardBySerial(expectation.serial)
     await expect(card).toBeVisible({ timeout: process.env.CI ? 20_000 : 10_000 })

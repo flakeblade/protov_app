@@ -72,9 +72,13 @@ export class ControlsPage {
     row: 'Voltage' | 'Current',
     field: SetpointField,
     value: string,
+    timeoutMs = 20_000,
   ) {
     const unit = row === 'Voltage' || field === 'OVP' ? 'V' : 'A'
-    await expect(this.setpointInput(card, row, field)).toHaveValue(`${value}${unit}`)
+    const input = this.setpointInput(card, row, field)
+    await expect
+      .poll(async () => (await input.inputValue()) === `${value}${unit}`, { timeout: timeoutMs })
+      .toBe(true)
   }
 
   async expectSetpointError(
