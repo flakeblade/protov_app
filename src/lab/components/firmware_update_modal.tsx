@@ -231,10 +231,10 @@ function ReleaseNotesPanel({ body }: { body: string }) {
           href={changelogUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={classes.changelogLink}
+          className={classes.changelogExternalLink}
         >
           See full changelog
-          <IconExternalLink size={14} stroke={1.75} />
+          <IconExternalLink size={12} stroke={1.5} />
         </Anchor>
       ) : null}
     </>
