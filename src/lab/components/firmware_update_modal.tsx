@@ -30,6 +30,7 @@ import {
   type FirmwarePackage,
   type FirmwareRelease,
 } from '../firmware/releases'
+import { compareVersions } from '../firmware/version'
 import { useDeviceStore } from '../devices/device_store'
 import type { LabDevice } from '../devices/device_types'
 import classes from './firmware_update_modal.module.css'
@@ -38,12 +39,16 @@ const STEPS = [
   { key: 'check', label: 'Check' },
   { key: 'download', label: 'Download' },
   { key: 'install', label: 'Install' },
+  { key: 'reconnect', label: 'Reconnect' },
   { key: 'confirm', label: 'Confirm' },
 ] as const
+
+const REBOOT_WAIT_MS = 60_000
 
 const NOTES_COLLAPSE_THRESHOLD = 3
 
 type CheckState = 'checking' | 'available' | 'up-to-date' | 'incompatible' | 'error'
+type PostInstallPhase = 'none' | 'awaiting_disconnect' | 'disconnected'
 
 interface FirmwareUpdateModalProps {
   opened: boolean
@@ -237,8 +242,14 @@ function ReleaseNotesPanel({ body }: { body: string }) {
 }
 
 export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdateModalProps) {
-  const { devices, runFirmwareUpdate, abortFirmwareUpdate, beginFwupSession, endFwupSession } =
-    useDeviceStore()
+  const {
+    devices,
+    runFirmwareUpdate,
+    abortFirmwareUpdate,
+    beginFwupSession,
+    endFwupSession,
+    reconnectDevice,
+  } = useDeviceStore()
   const liveDevice = devices.find((entry) => entry.id === deviceId)
   const [snapshot, setSnapshot] = useState<FirmwareUpdateDeviceSnapshot | null>(null)
 
@@ -264,7 +275,10 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   const [installError, setInstallError] = useState<string | null>(null)
   const [installComplete, setInstallComplete] = useState(false)
   const [installing, setInstalling] = useState(false)
-  const [updateConfirmed, setUpdateConfirmed] = useState(false)
+  const [postInstallPhase, setPostInstallPhase] = useState<PostInstallPhase>('none')
+  const [reconnecting, setReconnecting] = useState(false)
+  const [reconnectError, setReconnectError] = useState<string | null>(null)
+  const [verifiedFwVersion, setVerifiedFwVersion] = useState<string | null>(null)
 
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(true)
@@ -289,7 +303,10 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     setInstallError(null)
     setInstallComplete(false)
     setInstalling(false)
-    setUpdateConfirmed(false)
+    setPostInstallPhase('none')
+    setReconnecting(false)
+    setReconnectError(null)
+    setVerifiedFwVersion(null)
     setDetailsOpen(false)
     setReleaseNotesOpen(true)
     setCancelConfirmOpen(false)
@@ -396,28 +413,28 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     }
   }, [activeStep, downloadComplete, downloadError, firmwarePackage, opened])
 
+  useEffect(() => {
+    if (postInstallPhase !== 'awaiting_disconnect') return
+
+    const timeoutId = window.setTimeout(() => {
+      setInstallError('Update failed — device did not reboot in time.')
+      setPostInstallPhase('none')
+    }, REBOOT_WAIT_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [postInstallPhase])
+
+  useEffect(() => {
+    if (postInstallPhase !== 'awaiting_disconnect' || !linkLost) return
+    setPostInstallPhase('disconnected')
+    setActiveStep(3)
+  }, [linkLost, postInstallPhase])
+
   const handleClose = () => {
     abortRef.current?.abort()
     onClose()
-  }
-
-  const requiresCancelConfirmation = activeStep === 1 || (activeStep === 2 && installing)
-
-  const handleRequestClose = () => {
-    if (requiresCancelConfirmation) {
-      setCancelConfirmOpen(true)
-      return
-    }
-    handleClose()
-  }
-
-  const handleConfirmCancel = () => {
-    abortRef.current?.abort()
-    if (liveDevice && activeStep === 2) {
-      void abortFirmwareUpdate(liveDevice.id)
-    }
-    setCancelConfirmOpen(false)
-    handleClose()
   }
 
   const handleRecheck = () => {
@@ -476,12 +493,27 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
       })
       setInstallComplete(true)
       setInstallProgress(100)
-      setActiveStep(3)
+      setPostInstallPhase('awaiting_disconnect')
     } catch (error) {
       setInstallError(formatFwupError(error))
     } finally {
       setInstalling(false)
       abortRef.current = null
+    }
+  }
+
+  const handleReconnect = async () => {
+    setReconnecting(true)
+    setReconnectError(null)
+
+    try {
+      const { fwVersion } = await reconnectDevice(deviceId, { quiet: true })
+      setVerifiedFwVersion(fwVersion)
+      setActiveStep(4)
+    } catch (error) {
+      setReconnectError(error instanceof Error ? error.message : 'Failed to reconnect device')
+    } finally {
+      setReconnecting(false)
     }
   }
 
@@ -494,13 +526,16 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
       setActiveStep(2)
       void handleInstall()
     }
-    if (activeStep === 3 && installComplete) {
-      setUpdateConfirmed(true)
+    if (activeStep === 3) {
+      void handleReconnect()
+    }
+    if (activeStep === 4 && verifySuccess) {
+      handleClose()
     }
   }
 
   const handleBack = () => {
-    if (activeStep === 2 && installing) return
+    if (activeStep === 2 && (installing || postInstallPhase !== 'none')) return
     if (activeStep >= 3) return
     setActiveStep((step) => Math.max(step - 1, 0))
   }
@@ -514,11 +549,33 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   const hwLabel = hwRevision ?? device.hwVersion
   const showReleaseNotes = Boolean(release?.body && checkState === 'available')
 
-  const getPrimaryAction = (): PrimaryAction => {
-    if (updateConfirmed) {
-      return { label: 'Close', enabled: true, onClick: handleClose }
-    }
+  const verifySuccess =
+    verifiedFwVersion !== null && compareVersions(verifiedFwVersion, targetVersion) >= 0
 
+  const requiresCancelConfirmation =
+    activeStep === 1 ||
+    (activeStep === 2 && (installing || postInstallPhase === 'awaiting_disconnect')) ||
+    activeStep === 3 ||
+    (activeStep === 4 && verifySuccess)
+
+  const handleRequestClose = () => {
+    if (requiresCancelConfirmation) {
+      setCancelConfirmOpen(true)
+      return
+    }
+    handleClose()
+  }
+
+  const handleConfirmCancel = () => {
+    abortRef.current?.abort()
+    if (liveDevice && activeStep === 2 && installing) {
+      void abortFirmwareUpdate(liveDevice.id)
+    }
+    setCancelConfirmOpen(false)
+    handleClose()
+  }
+
+  const getPrimaryAction = (): PrimaryAction => {
     if (activeStep === 0) {
       if (checkState === 'checking') {
         return { label: 'Continue', enabled: false, reason: 'Waiting for release check…' }
@@ -546,21 +603,74 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
       if (installing) {
         return { label: 'Installing…', enabled: false, reason: installPhase, loading: true }
       }
+      if (postInstallPhase === 'awaiting_disconnect') {
+        return {
+          label: 'Waiting for reboot…',
+          enabled: false,
+          reason: 'Waiting for device to disconnect…',
+        }
+      }
       return { label: 'Installing…', enabled: false, reason: 'Waiting to start install…' }
     }
 
-    if (activeStep === 3 && installComplete) {
-      return { label: 'Complete update', enabled: true, onClick: handleNext }
+    if (activeStep === 3) {
+      if (reconnectError) {
+        return { label: 'Select device', enabled: true, onClick: handleNext }
+      }
+      return {
+        label: 'Select device',
+        enabled: true,
+        onClick: handleNext,
+        loading: reconnecting,
+      }
+    }
+
+    if (activeStep === 4) {
+      if (verifySuccess) {
+        return { label: 'Complete', enabled: true, onClick: handleNext }
+      }
+      if (verifiedFwVersion !== null) {
+        return { label: 'Select device', enabled: true, onClick: () => setActiveStep(3) }
+      }
+      return { label: 'Close', enabled: true, onClick: handleClose }
     }
 
     return { label: 'Close', enabled: true, onClick: handleClose }
   }
 
   const primaryAction = getPrimaryAction()
-  const showBack = activeStep > 0 && activeStep < 3 && !installing && !updateConfirmed
+  const showBack =
+    activeStep > 0 &&
+    activeStep < 3 &&
+    !installing &&
+    postInstallPhase === 'none' &&
+    !reconnecting
+
+  const footerStatus = (() => {
+    if (activeStep === 2) {
+      if (installError) return installError
+      if (installing) return installPhase
+      if (postInstallPhase === 'awaiting_disconnect') {
+        return 'Device rebooting — keep USB connected. Reconnect starts automatically.'
+      }
+    }
+    if (activeStep === 3) {
+      if (reconnecting) return 'Choose your device in the port picker.'
+      if (reconnectError) return reconnectError
+      return 'Device rebooted — press Select device to reconnect.'
+    }
+    if (activeStep === 4) {
+      if (verifySuccess) return `Update verified — running v${verifiedFwVersion}.`
+      if (verifiedFwVersion !== null) {
+        return `Version mismatch — expected v${targetVersion}, found v${verifiedFwVersion}.`
+      }
+    }
+    if (!primaryAction.enabled && primaryAction.reason) return primaryAction.reason
+    return null
+  })()
 
   const renderStepDetail = (stepIndex: number): ReactNode => {
-    const isActive = activeStep === stepIndex || (updateConfirmed && stepIndex === 3)
+    const isActive = activeStep === stepIndex
     if (!isActive) return null
 
     if (stepIndex === 0) {
@@ -630,51 +740,111 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     }
 
     if (stepIndex === 2) {
+      const progressLabel = installError
+        ? 'Failed'
+        : installing
+          ? installPhase
+          : postInstallPhase === 'awaiting_disconnect'
+            ? 'Rebooting…'
+            : installComplete
+              ? 'Complete'
+              : 'Waiting…'
+
       return (
         <>
-          <Text className={classes.mutedText}>Keep USB connected. Outputs disabled.</Text>
-          <ProgressBar value={installProgress} animated={installing && !installComplete} />
+          <ProgressBar
+            value={installProgress}
+            animated={installing || postInstallPhase === 'awaiting_disconnect'}
+          />
           <div className={classes.progressMeta}>
-            <Text className={classes.progressLabel} lineClamp={2}>
-              {installError ? 'Failed' : installing ? installPhase : 'Waiting…'}
-            </Text>
+            <Text className={classes.progressLabel}>{progressLabel}</Text>
             <Text className={clsx(classes.progressValue, classes.progressPercent)}>
               {installProgress}%
             </Text>
           </div>
-          {installError ? <Text className={classes.errorText}>{installError}</Text> : null}
         </>
       )
     }
 
     if (stepIndex === 3) {
-      if (updateConfirmed) {
-        return (
-          <div className={classes.successCompact}>
-            <div className={classes.successTitle}>
-              <IconCheck size={14} stroke={2.5} className={classes.successIcon} />
-              Update complete
-            </div>
-            <Text className={classes.mutedText}>
-              Running v{targetVersion}. Refresh status if needed.
-            </Text>
-          </div>
-        )
-      }
       return (
         <>
-          <Text className={classes.bodyText}>Firmware v{targetVersion} written to device.</Text>
-          <Text className={classes.mutedText}>
-            {linkLost
-              ? 'Reconnect the device, then confirm once *IDN? reports the new version.'
-              : `Confirm once reconnected and version reads v${targetVersion}.`}
-          </Text>
+          {reconnecting ? (
+            <div className={classes.inlineStatus}>
+              <Loader size="xs" color="gray" />
+              <Text className={classes.mutedText}>Opening port picker…</Text>
+            </div>
+          ) : (
+            <Text className={classes.stepDetailText}>Ready to reconnect.</Text>
+          )}
         </>
       )
     }
 
+    if (stepIndex === 4) {
+      if (verifySuccess) {
+        return (
+          <div className={classes.successCompact}>
+            <div className={classes.successTitle}>
+              <IconCheck size={14} stroke={2.5} className={classes.successIcon} />
+              Update successful
+            </div>
+            <Text className={classes.mutedText}>Running v{verifiedFwVersion}.</Text>
+          </div>
+        )
+      }
+      if (verifiedFwVersion !== null) {
+        return (
+          <>
+            <Text className={classes.errorText}>Version mismatch.</Text>
+            <Text className={classes.mutedText}>
+              Try reconnecting again or power-cycle the device.
+            </Text>
+          </>
+        )
+      }
+      return null
+    }
+
     return null
   }
+
+  const cancelPrompt =
+    activeStep === 1
+      ? {
+          title: 'Cancel download?',
+          body: 'The firmware image is still downloading. Closing now stops the download and discards progress.',
+          stayLabel: 'Keep downloading',
+          leaveLabel: 'Cancel download',
+        }
+      : activeStep === 2 && installing
+        ? {
+            title: 'Cancel firmware update?',
+            body: `An install is in progress on ${device.name}. Closing attempts to abort the session, but the device may still be writing firmware.`,
+            stayLabel: 'Keep installing',
+            leaveLabel: 'Close anyway',
+            warn: true,
+          }
+        : activeStep === 2 && postInstallPhase === 'awaiting_disconnect'
+          ? {
+              title: 'Leave before reconnect?',
+              body: 'The device is rebooting after install. Stay to finish reconnecting and verify the new firmware version.',
+              stayLabel: 'Stay and wait',
+              leaveLabel: 'Close anyway',
+            }
+          : activeStep === 3
+            ? {
+                title: 'Leave before reconnect?',
+                body: 'Stay to select the device in the port picker and confirm the update succeeded.',
+                stayLabel: 'Stay and reconnect',
+                leaveLabel: 'Close anyway',
+              }
+            : {
+                title: 'Leave before completing?',
+                body: 'Firmware verified successfully. Stay to finish the update flow.',
+                stayLabel: 'Stay and complete',
+                leaveLabel: 'Close anyway',
+              }
 
   return (
     <>
@@ -684,9 +854,9 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
         withCloseButton={false}
         padding={0}
         centered
-        size={720}
-        closeOnClickOutside={!installing}
-        closeOnEscape={!installing}
+        size={880}
+        closeOnClickOutside
+        closeOnEscape
         classNames={{
           body: classes.modalBody,
           content: classes.modalContent,
@@ -718,13 +888,6 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
                 checking={checkState === 'checking'}
                 upToDate={checkState === 'up-to-date'}
               />
-
-              {linkLost ? (
-                <Text className={classes.linkLostBanner}>
-                  Device disconnected — this is normal during OTA reboot. Reconnect from the Devices
-                  page when the device returns, then confirm the new version.
-                </Text>
-              ) : null}
 
               <div className={classes.leftScroll}>
                 {showReleaseNotes && release ? (
@@ -774,11 +937,8 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
               <span className={classes.statusLabel}>Progress</span>
               <ol className={classes.stepper}>
                 {STEPS.map((step, index) => {
-                  const isComplete =
-                    updateConfirmed ||
-                    index < activeStep ||
-                    (index === 2 && installComplete && activeStep >= 3)
-                  const isActive = !updateConfirmed && activeStep === index
+                  const isComplete = index < activeStep
+                  const isActive = activeStep === index
 
                   return (
                     <li
@@ -786,7 +946,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
                       className={clsx(
                         classes.stepRow,
                         isComplete && classes.stepRowComplete,
-                        (isActive || (updateConfirmed && index === 3)) && classes.stepRowActive,
+                        isActive && classes.stepRowActive,
                       )}
                     >
                       <div className={classes.stepRail}>
@@ -809,9 +969,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
           </div>
 
           <div className={classes.footer}>
-            {!primaryAction.enabled && primaryAction.reason ? (
-              <Text className={classes.footerReason}>{primaryAction.reason}</Text>
-            ) : null}
+            {footerStatus ? <Text className={classes.footerStatus}>{footerStatus}</Text> : null}
             <div className={classes.footerActions}>
               {showBack ? (
                 <Button variant="subtle" color="gray" onClick={handleBack}>
@@ -833,38 +991,26 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
       <Modal
         opened={cancelConfirmOpen}
         onClose={() => setCancelConfirmOpen(false)}
-        title={activeStep === 1 ? 'Cancel download?' : 'Cancel firmware update?'}
+        title={cancelPrompt.title}
         centered
         size="sm"
       >
         <div className={classes.cancelBody}>
-          {activeStep === 1 ? (
-            <Text className={classes.bodyText}>
-              The firmware image is still downloading. Closing now stops the download and discards
-              progress.
-            </Text>
-          ) : (
-            <>
+          <Text className={classes.bodyText}>{cancelPrompt.body}</Text>
+          {cancelPrompt.warn ? (
+            <div className={classes.callout}>
               <Text className={classes.bodyText}>
-                An install is in progress on {device.name}. Closing attempts to abort the session,
-                but the device may still be writing firmware.
+                Prefer waiting until the progress bar completes. Interrupting mid-flash can leave
+                the device unresponsive.
               </Text>
-              <div className={classes.callout}>
-                <Text className={classes.bodyText}>
-                  Prefer waiting until the progress bar completes. Interrupting mid-flash can leave
-                  the device unresponsive.
-                </Text>
-              </div>
-            </>
-          )}
+            </div>
+          ) : null}
 
-          <div className={classes.footerActions}>
-            <Button variant="subtle" color="gray" onClick={() => setCancelConfirmOpen(false)}>
-              {activeStep === 1 ? 'Keep downloading' : 'Keep installing'}
+          <div className={classes.cancelActions}>
+            <Button variant="subtle" color="gray" onClick={handleConfirmCancel}>
+              {cancelPrompt.leaveLabel}
             </Button>
-            <Button variant="default" onClick={handleConfirmCancel}>
-              {activeStep === 1 ? 'Cancel download' : 'Close anyway'}
-            </Button>
+            <Button onClick={() => setCancelConfirmOpen(false)}>{cancelPrompt.stayLabel}</Button>
           </div>
         </div>
       </Modal>

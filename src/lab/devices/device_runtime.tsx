@@ -222,9 +222,8 @@ class DeviceRuntime {
       )
       notifications.show({
         id: `device-link-lost-fwup-${deviceId}`,
-        title: 'Device disconnected',
-        message:
-          'The serial link dropped — common during OTA reboot. The update window stays open; reconnect when the device returns.',
+        title: 'Device rebooting',
+        message: 'USB link lost — continue in the update window.',
         color: 'orange',
         icon: <IconPlugConnectedX size={18} />,
       })
@@ -530,6 +529,104 @@ class DeviceRuntime {
       return
     }
     await this.removeDevice(deviceId, 'manual')
+  }
+
+  /** Re-open a serial link after OTA reboot; opens the browser port picker when using Web Serial. */
+  async reconnectDevice(
+    deviceId: string,
+    options: { quiet?: boolean } = {},
+  ): Promise<{ fwVersion: string; hwVersion: string }> {
+    const existing = this.devices.find((entry) => entry.id === deviceId)
+
+    const rawTransport = await requestSerialPort()
+    const transport = withTransportQueue(rawTransport, createTransportQueue())
+    const probed = await openAndProbeTransport(transport)
+
+    if (probed.serialNumber !== deviceId) {
+      await transport.close()
+      throw new Error(
+        `Wrong device selected (SN ${probed.serialNumber}). Choose the device with SN ${deviceId}.`,
+      )
+    }
+
+    const colorSlot =
+      existing?.colorSlot ??
+      acquireColorSlot(probed.serialNumber, this.devices, this.serialColorSlots)
+    if (!existing) {
+      rememberColorSlot(this.serialColorSlots, probed.serialNumber, colorSlot)
+    }
+    await applyDeviceColorScheme(transport, colorSlot)
+    const channels = await pollDeviceChannels(transport, probed.channels)
+    const telemetry = await pollDeviceTelemetry(transport).catch(() => EMPTY_TELEMETRY)
+    const display = await pollDeviceDisplaySettings(transport).catch(() => DEFAULT_DISPLAY_SETTINGS)
+
+    if (existing) {
+      this.unregisterDeviceLink(existing.id)
+      try {
+        await existing.transport.close()
+      } catch {
+        // Port may already be closed after an OTA reboot.
+      }
+
+      this.updateDevice(existing.id, (device) => ({
+        ...device,
+        port: probed.port,
+        fwVersion: probed.fwVersion,
+        hwVersion: probed.hwVersion,
+        channels,
+        telemetry,
+        display,
+        transport,
+        linkLost: false,
+      }))
+
+      this.pendingLinkLostRemoval.delete(existing.id)
+      this.pollFailures.delete(existing.id)
+
+      const reconnected = this.devices.find((entry) => entry.id === existing.id)
+      if (reconnected) {
+        this.registerDeviceLink(reconnected)
+      }
+    } else {
+      this.replace((current) => [
+        ...current,
+        {
+          id: probed.serialNumber,
+          name: probed.name,
+          port: probed.port,
+          description: probed.description,
+          serialNumber: probed.serialNumber,
+          fwVersion: probed.fwVersion,
+          hwVersion: probed.hwVersion,
+          channels,
+          telemetry,
+          display,
+          colorSlot,
+          transport,
+        },
+      ])
+
+      for (const channel of channels) {
+        this.knownChannelModes.set(`${probed.serialNumber}:${channel.identifier}`, channel.mode)
+      }
+
+      const connected = this.devices.find((entry) => entry.id === probed.serialNumber)
+      if (connected) {
+        this.registerDeviceLink(connected)
+      }
+    }
+
+    if (!options.quiet) {
+      notifications.show({
+        id: 'device-reconnected',
+        title: 'Device reconnected',
+        message: `${probed.name} (${probed.serialNumber}) is back online.`,
+        color: 'green',
+        icon: <IconPlugConnected size={18} />,
+      })
+    }
+
+    return { fwVersion: probed.fwVersion, hwVersion: probed.hwVersion }
   }
 
   async toggleChannelOutput(deviceId: string, channelIdentifier: string): Promise<void> {

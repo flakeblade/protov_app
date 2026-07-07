@@ -43,6 +43,10 @@ interface DeviceStoreValue {
     },
   ) => Promise<void>
   abortFirmwareUpdate: (deviceId: string) => Promise<void>
+  reconnectDevice: (
+    deviceId: string,
+    options?: { quiet?: boolean },
+  ) => Promise<{ fwVersion: string; hwVersion: string }>
   beginFwupSession: (deviceId: string) => void
   endFwupSession: (deviceId: string) => void
 }
@@ -76,6 +80,10 @@ const DeviceActionsContext = createContext<{
     },
   ) => Promise<void>
   abortFirmwareUpdate: (deviceId: string) => Promise<void>
+  reconnectDevice: (
+    deviceId: string,
+    options?: { quiet?: boolean },
+  ) => Promise<{ fwVersion: string; hwVersion: string }>
   beginFwupSession: (deviceId: string) => void
   endFwupSession: (deviceId: string) => void
 } | null>(null)
@@ -190,6 +198,13 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
     await deviceRuntime.abortFirmwareUpdate(deviceId)
   }, [])
 
+  const reconnectDevice = useCallback(
+    async (deviceId: string, options?: { quiet?: boolean }) => {
+      return deviceRuntime.reconnectDevice(deviceId, options)
+    },
+    [],
+  )
+
   const beginFwupSession = useCallback((deviceId: string) => {
     deviceRuntime.beginFwupSession(deviceId)
   }, [])
@@ -218,6 +233,7 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       disableAllOutputs,
       runFirmwareUpdate,
       abortFirmwareUpdate,
+      reconnectDevice,
       beginFwupSession,
       endFwupSession,
     }),
@@ -232,6 +248,7 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       disableAllOutputs,
       runFirmwareUpdate,
       abortFirmwareUpdate,
+      reconnectDevice,
       beginFwupSession,
       endFwupSession,
     ],
