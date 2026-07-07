@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { ConnectDeviceCard } from '../components/connect_device_card'
 import { DeviceCard } from '../components/device_card'
+import { FirmwareUpdateModal } from '../components/firmware_update_modal'
 import { MAX_DEVICES } from '../devices/device-colors'
 import { useDeviceBadges, useDeviceStore } from '../devices/device_store'
 
@@ -11,33 +12,47 @@ function ConnectedDeviceCard({ deviceId }: { deviceId: string }) {
   const navigate = useNavigate()
   const { devices, disconnectDevice, toggleChannelOutput } = useDeviceStore()
   const [disconnecting, setDisconnecting] = useState(false)
+  const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const device = devices.find((entry) => entry.id === deviceId)
   const badges = useDeviceBadges(device!)
 
   if (!device) return null
 
   return (
-    <DeviceCard
-      name={device.name}
-      description={device.description}
-      badges={badges}
-      channels={device.channels}
-      onChannelToggle={(identifier) => {
-        void toggleChannelOutput(device.id, identifier)
-      }}
-      buttonLabel="Go to controls"
-      onButtonClick={() => {
-        navigate('/lab/controls')
-      }}
-      secondaryButtonLabel="Disconnect"
-      secondaryButtonLoading={disconnecting}
-      onSecondaryButtonClick={() => {
-        setDisconnecting(true)
-        void disconnectDevice(device.id).finally(() => {
-          setDisconnecting(false)
-        })
-      }}
-    />
+    <>
+      <DeviceCard
+        name={device.name}
+        description={device.description}
+        badges={badges}
+        channels={device.channels}
+        onChannelToggle={(identifier) => {
+          void toggleChannelOutput(device.id, identifier)
+        }}
+        onCheckForUpdates={() => {
+          setUpdateModalOpen(true)
+        }}
+        buttonLabel="Go to controls"
+        onButtonClick={() => {
+          navigate('/lab/controls')
+        }}
+        secondaryButtonLabel="Disconnect"
+        secondaryButtonLoading={disconnecting}
+        onSecondaryButtonClick={() => {
+          setDisconnecting(true)
+          void disconnectDevice(device.id).finally(() => {
+            setDisconnecting(false)
+          })
+        }}
+      />
+
+      <FirmwareUpdateModal
+        opened={updateModalOpen}
+        onClose={() => {
+          setUpdateModalOpen(false)
+        }}
+        deviceId={device.id}
+      />
+    </>
   )
 }
 

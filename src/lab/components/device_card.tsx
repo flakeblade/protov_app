@@ -1,14 +1,17 @@
 import type { ReactNode } from 'react'
 import {
+  ActionIcon,
   Badge,
   Box,
   Button,
   Card,
   Code,
   Group,
+  Menu,
   Stack,
   Text,
 } from '@mantine/core'
+import { IconDots } from '@tabler/icons-react'
 import type { Icon } from '@tabler/icons-react'
 
 import type { Channel } from './channel_chip'
@@ -32,6 +35,7 @@ export interface DeviceCardProps {
   onSecondaryButtonClick?: () => void
   secondaryButtonLabel?: string
   secondaryButtonLoading?: boolean
+  onCheckForUpdates?: () => void
   onChannelToggle?: (identifier: string) => void
   hideButton?: boolean
   children?: ReactNode
@@ -47,6 +51,7 @@ export function DeviceCard({
   onSecondaryButtonClick,
   secondaryButtonLabel,
   secondaryButtonLoading = false,
+  onCheckForUpdates,
   onChannelToggle,
   hideButton = false,
   children,
@@ -73,8 +78,22 @@ export function DeviceCard({
         <img src={protovMiniImage} alt={name} className={classes.deviceImage} />
       </Card.Section>
 
-      <Group justify="space-between" mt="md" mb="xs">
-        <Text fw={500}>{name}</Text>
+      <Group justify="space-between" align="center" mt="md" mb="xs" wrap="nowrap" gap="xs">
+        <Text fw={500} style={{ flex: 1, minWidth: 0 }} truncate>
+          {name}
+        </Text>
+        {onCheckForUpdates ? (
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <ActionIcon variant="subtle" color="gray" aria-label="Device options">
+                <IconDots size={18} stroke={1.75} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item onClick={onCheckForUpdates}>Check for updates</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        ) : null}
       </Group>
 
       <Stack justify="space-between" align="stretch" style={{ flex: 1 }}>

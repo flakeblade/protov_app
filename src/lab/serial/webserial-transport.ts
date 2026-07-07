@@ -131,9 +131,22 @@ export class WebSerialTransport implements SerialTransport {
 
     const payload = formatScpiCommand(command)
     serialDebug('tx', payload.slice(0, -1))
-    const writer = this.port.writable.getWriter()
+    await this.writeRaw(payload)
+  }
+
+  async writeBytes(data: Uint8Array): Promise<void> {
+    if (!this.isOpen || !this.port.writable) {
+      throw new Error('Serial port is not open')
+    }
+    serialDebug('tx bytes', { length: data.length })
+    await this.writeRaw(data)
+  }
+
+  private async writeRaw(payload: string | Uint8Array): Promise<void> {
+    const writer = this.port.writable!.getWriter()
     try {
-      await writer.write(textEncoder.encode(payload))
+      const bytes = typeof payload === 'string' ? textEncoder.encode(payload) : payload
+      await writer.write(bytes)
     } finally {
       writer.releaseLock()
     }
@@ -145,6 +158,34 @@ export class WebSerialTransport implements SerialTransport {
     const response = await this.readLine(timeoutMs)
     serialDebug('query: response', { command, response })
     return response
+  }
+
+  async readLine(timeoutMs = 3000): Promise<string> {
+    return this.readLineInternal(timeoutMs)
+  }
+
+  async drainIncoming(timeoutMs: number): Promise<string[]> {
+    const lines = [...this.pendingLines]
+    this.pendingLines = []
+
+    while (true) {
+      const { line, rest } = takeScpiLine(this.readBuffer)
+      if (line === null) break
+      this.readBuffer = rest
+      if (line.length > 0) lines.push(line)
+    }
+
+    if (lines.length > 0 || timeoutMs <= 0) {
+      return lines
+    }
+
+    try {
+      const line = await this.readLineInternal(timeoutMs)
+      if (line) lines.push(line)
+    } catch {
+      // expected when nothing pending
+    }
+    return lines
   }
 
   private async assertHostReadySignals(): Promise<void> {
@@ -223,7 +264,7 @@ export class WebSerialTransport implements SerialTransport {
     }
   }
 
-  private readLine(timeoutMs: number): Promise<string> {
+  private readLineInternal(timeoutMs: number): Promise<string> {
     const buffered = this.takeBufferedLine()
     if (buffered !== null) {
       return Promise.resolve(buffered)

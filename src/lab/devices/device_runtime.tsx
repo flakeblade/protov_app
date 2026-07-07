@@ -31,6 +31,11 @@ import {
   type SetpointParam,
 } from './device_io'
 import { EMPTY_TELEMETRY, pollDeviceTelemetry } from './telemetry_io'
+import {
+  abortFirmwareUpdate,
+  uploadFirmware,
+  type FwupProgress,
+} from '../firmware/fwup-client'
 import { MAX_DEVICES, acquireColorSlot, rememberColorSlot } from './device-colors'
 import { adjustChannelForActive, PendingChannelOutput } from './channel-output-pending'
 import { PendingDisplaySettings } from './display-settings-pending'
@@ -44,6 +49,7 @@ import {
 import { deviceSession } from './device_session'
 import type { LabDevice } from './device_types'
 import { openAndProbeTransport } from '../serial/probe-device'
+import { parseIdn } from '../serial/constants'
 import { requestSerialPort, usesMockTransport } from '../serial/request-port'
 import { serialDebug, serialWarn } from '../serial/serial-debug'
 import { isWebSerialSupported } from '../serial/types'
@@ -75,6 +81,7 @@ class DeviceRuntime {
   private readonly serialColorSlots = new Map<string, number>()
   private readonly pollFailures = new Map<string, number>()
   private readonly disconnecting = new Set<string>()
+  private readonly fwupDevices = new Set<string>()
   private readonly linkUnsubscribers = new Map<string, () => void>()
   private pollTimer: number | null = null
   private pollInFlight = false
@@ -249,6 +256,9 @@ class DeviceRuntime {
         snapshot.map(async (device) => {
           if (this.disconnecting.has(device.id)) {
             return { deviceId: device.id, ok: false as const, lost: false }
+          }
+          if (this.fwupDevices.has(device.id)) {
+            return { deviceId: device.id, ok: false as const, lost: false, skipped: true as const }
           }
 
           try {
@@ -591,6 +601,47 @@ class DeviceRuntime {
         color: 'red',
       })
     }
+  }
+
+  async runFirmwareUpdate(
+    deviceId: string,
+    firmware: Uint8Array,
+    signature: Uint8Array,
+    options: {
+      onProgress?: (progress: FwupProgress) => void
+      signal?: AbortSignal
+    } = {},
+  ): Promise<void> {
+    const device = this.devices.find((entry) => entry.id === deviceId)
+    if (!device) {
+      throw new Error('Device not connected')
+    }
+
+    this.fwupDevices.add(deviceId)
+    try {
+      await uploadFirmware(device.transport, firmware, signature, options)
+      try {
+        const idnRaw = await device.transport.query('*IDN?', 5000)
+        const idn = parseIdn(idnRaw)
+        if (idn) {
+          this.updateDevice(deviceId, (entry) => ({
+            ...entry,
+            fwVersion: idn.fwVersion,
+            hwVersion: idn.hwVersion,
+          }))
+        }
+      } catch {
+        // device may reset after OTA
+      }
+    } finally {
+      this.fwupDevices.delete(deviceId)
+    }
+  }
+
+  async abortFirmwareUpdate(deviceId: string): Promise<void> {
+    const device = this.devices.find((entry) => entry.id === deviceId)
+    if (!device) return
+    await abortFirmwareUpdate(device.transport)
   }
 
   async disableAllOutputs(): Promise<void> {

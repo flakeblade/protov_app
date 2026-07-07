@@ -25,6 +25,16 @@ export function withTransportQueue(transport: SerialTransport, queue: TransportQ
     query: (command: string, timeoutMs?: number) => queue(() => transport.query(command, timeoutMs)),
   }
 
+  if (transport.writeBytes) {
+    wrapped.writeBytes = (data: Uint8Array) => queue(() => transport.writeBytes!(data))
+  }
+  if (transport.readLine) {
+    wrapped.readLine = (timeoutMs?: number) => queue(() => transport.readLine!(timeoutMs))
+  }
+  if (transport.drainIncoming) {
+    wrapped.drainIncoming = (timeoutMs: number) => queue(() => transport.drainIncoming!(timeoutMs))
+  }
+
   if (transport.onConnectionLost) {
     wrapped.onConnectionLost = (handler: ConnectionLostHandler) => transport.onConnectionLost!(handler)
   }

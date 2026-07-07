@@ -33,6 +33,16 @@ interface DeviceStoreValue {
   updateLcdBrightness: (deviceId: string, value: number) => Promise<void>
   updateLedBrightness: (deviceId: string, value: number) => Promise<void>
   disableAllOutputs: () => Promise<void>
+  runFirmwareUpdate: (
+    deviceId: string,
+    firmware: Uint8Array,
+    signature: Uint8Array,
+    options?: {
+      onProgress?: (progress: import('../firmware/fwup-client').FwupProgress) => void
+      signal?: AbortSignal
+    },
+  ) => Promise<void>
+  abortFirmwareUpdate: (deviceId: string) => Promise<void>
 }
 
 const DeviceStateContext = createContext<{
@@ -54,6 +64,16 @@ const DeviceActionsContext = createContext<{
   updateLcdBrightness: (deviceId: string, value: number) => Promise<void>
   updateLedBrightness: (deviceId: string, value: number) => Promise<void>
   disableAllOutputs: () => Promise<void>
+  runFirmwareUpdate: (
+    deviceId: string,
+    firmware: Uint8Array,
+    signature: Uint8Array,
+    options?: {
+      onProgress?: (progress: import('../firmware/fwup-client').FwupProgress) => void
+      signal?: AbortSignal
+    },
+  ) => Promise<void>
+  abortFirmwareUpdate: (deviceId: string) => Promise<void>
 } | null>(null)
 
 function deviceBadges(device: LabDevice): DeviceBadge[] {
@@ -147,6 +167,25 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
     await deviceRuntime.disableAllOutputs()
   }, [])
 
+  const runFirmwareUpdate = useCallback(
+    async (
+      deviceId: string,
+      firmware: Uint8Array,
+      signature: Uint8Array,
+      options?: {
+        onProgress?: (progress: import('../firmware/fwup-client').FwupProgress) => void
+        signal?: AbortSignal
+      },
+    ) => {
+      await deviceRuntime.runFirmwareUpdate(deviceId, firmware, signature, options)
+    },
+    [],
+  )
+
+  const abortFirmwareUpdate = useCallback(async (deviceId: string) => {
+    await deviceRuntime.abortFirmwareUpdate(deviceId)
+  }, [])
+
   const stateValue = useMemo(
     () => ({
       devices,
@@ -165,6 +204,8 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       updateLcdBrightness,
       updateLedBrightness,
       disableAllOutputs,
+      runFirmwareUpdate,
+      abortFirmwareUpdate,
     }),
     [
       connectDevice,
@@ -175,6 +216,8 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       updateLcdBrightness,
       updateLedBrightness,
       disableAllOutputs,
+      runFirmwareUpdate,
+      abortFirmwareUpdate,
     ],
   )
 

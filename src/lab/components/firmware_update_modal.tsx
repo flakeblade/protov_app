@@ -1,108 +1,364 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  Alert,
-  Box,
+  ActionIcon,
+  Anchor,
   Button,
-  Code,
-  Group,
-  List,
+  Collapse,
   Loader,
   Modal,
-  Progress,
-  Stack,
-  Stepper,
   Text,
+  UnstyledButton,
 } from '@mantine/core'
-import { IconAlertTriangle, IconCircleCheck, IconDownload, IconRefresh } from '@tabler/icons-react'
+import {
+  IconArrowRight,
+  IconCheck,
+  IconChevronDown,
+  IconExternalLink,
+  IconRefresh,
+  IconX,
+} from '@tabler/icons-react'
+import clsx from 'clsx'
 
-const MOCK_LATEST_VERSION = '0.2.0'
-const STEP_CONTENT_MIN_HEIGHT = 280
-const MOCK_RELEASE_NOTES = [
-  'Improved PD negotiation stability',
-  'Fixed channel B over-current reporting',
-  'Lower idle power draw on USB-only input',
-]
+import { FwupError, queryHardwareRevision } from '../firmware/fwup-client'
+import { parseInlineMarkdown, parseReleaseNotes } from '../firmware/release-notes'
+import {
+  downloadReleaseAsset,
+  fetchLatestRelease,
+  formatBytes,
+  isUpdateAvailable,
+  selectFirmwarePackage,
+  type FirmwarePackage,
+  type FirmwareRelease,
+} from '../firmware/releases'
+import { useDeviceStore } from '../devices/device_store'
+import classes from './firmware_update_modal.module.css'
+
+const STEPS = [
+  { key: 'check', label: 'Check' },
+  { key: 'download', label: 'Download' },
+  { key: 'install', label: 'Install' },
+  { key: 'confirm', label: 'Confirm' },
+] as const
+
+const NOTES_COLLAPSE_THRESHOLD = 3
+
+type CheckState = 'checking' | 'available' | 'up-to-date' | 'incompatible' | 'error'
 
 interface FirmwareUpdateModalProps {
   opened: boolean
   onClose: () => void
-  deviceName: string
-  currentVersion: string
-  serialNumber: string
+  deviceId: string
 }
 
-type CheckState = 'checking' | 'available' | 'up-to-date'
+interface PrimaryAction {
+  label: string
+  enabled: boolean
+  reason?: string
+  onClick?: () => void
+  loading?: boolean
+}
 
-export function FirmwareUpdateModal({
+function formatBuildDate(release: FirmwareRelease): string {
+  const iso = release.bundledAt ?? release.publishedAt
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function formatFwupError(error: unknown): string {
+  if (error instanceof FwupError) {
+    const parts = [error.message]
+    if (error.details?.systErr) parts.push(`SYST:ERR? → ${error.details.systErr}`)
+    if (error.details?.fwupStat) parts.push(`SYST:FWUP:STAT? → ${error.details.fwupStat}`)
+    return parts.join(' · ')
+  }
+  if (error instanceof Error) return error.message
+  return 'Firmware update failed'
+}
+
+function renderInlineMarkdown(text: string): ReactNode {
+  return parseInlineMarkdown(text).map((part, index) =>
+    part.type === 'bold' ? (
+      <Text span fw={600} key={index}>
+        {part.value}
+      </Text>
+    ) : (
+      part.value
+    ),
+  )
+}
+
+function ProgressBar({ value, animated }: { value: number; animated?: boolean }) {
+  return (
+    <div className={classes.progressTrack}>
+      <div
+        className={classes.progressFill}
+        style={{
+          width: `${Math.max(0, Math.min(100, value))}%`,
+          ...(animated ? { transition: 'width 240ms ease' } : {}),
+        }}
+      />
+    </div>
+  )
+}
+
+function Disclosure({
+  label,
   opened,
-  onClose,
-  deviceName,
-  currentVersion,
-  serialNumber,
-}: FirmwareUpdateModalProps) {
+  onToggle,
+  children,
+}: {
+  label: string
+  opened: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className={classes.disclosure}>
+      <UnstyledButton className={classes.disclosureTrigger} onClick={onToggle}>
+        <span>{label}</span>
+        <IconChevronDown
+          size={16}
+          className={clsx(classes.disclosureChevron, opened && classes.disclosureChevronOpen)}
+        />
+      </UnstyledButton>
+      <Collapse in={opened}>
+        <div className={classes.disclosureBody}>{children}</div>
+      </Collapse>
+    </div>
+  )
+}
+
+function VersionHero({
+  installedVersion,
+  targetVersion,
+  checking,
+  upToDate,
+}: {
+  installedVersion: string
+  targetVersion: string
+  checking: boolean
+  upToDate: boolean
+}) {
+  if (upToDate) {
+    return (
+      <div className={classes.versionHero}>
+        <span className={classes.versionLabel}>Installed</span>
+        <span className={classes.versionValue}>v{installedVersion}</span>
+        <span className={classes.upToDateBadge}>Up to date</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={classes.versionHero}>
+      <span className={classes.versionLabel}>Installed</span>
+      <span className={classes.versionValue}>v{installedVersion}</span>
+      <IconArrowRight size={16} stroke={1.5} className={classes.versionArrow} />
+      <span className={classes.versionLabel}>Latest</span>
+      <span
+        className={clsx(
+          classes.versionValue,
+          classes.versionValueLatest,
+          checking && classes.versionValueMuted,
+        )}
+      >
+        {checking ? '…' : `v${targetVersion}`}
+      </span>
+    </div>
+  )
+}
+
+function ReleaseNotesPanel({ body }: { body: string }) {
+  const { items, changelogUrl } = parseReleaseNotes(body)
+  const [expanded, setExpanded] = useState(items.length <= NOTES_COLLAPSE_THRESHOLD)
+  const visibleItems = expanded ? items : items.slice(0, NOTES_COLLAPSE_THRESHOLD)
+  const hasHiddenItems = items.length > NOTES_COLLAPSE_THRESHOLD
+
+  if (items.length === 0 && !changelogUrl) {
+    return <Text className={classes.mutedText}>No release notes for this build.</Text>
+  }
+
+  return (
+    <>
+      {items.length > 0 ? (
+        <>
+          <ul className={classes.notesList}>
+            {visibleItems.map((note) => (
+              <li key={note} className={classes.notesItem}>
+                {renderInlineMarkdown(note)}
+              </li>
+            ))}
+          </ul>
+          {hasHiddenItems ? (
+            <UnstyledButton
+              className={classes.changelogLink}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? 'Show fewer notes' : `Show ${items.length - NOTES_COLLAPSE_THRESHOLD} more`}
+            </UnstyledButton>
+          ) : null}
+        </>
+      ) : null}
+      {changelogUrl ? (
+        <Anchor
+          href={changelogUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={classes.changelogLink}
+        >
+          See full changelog
+          <IconExternalLink size={14} stroke={1.75} />
+        </Anchor>
+      ) : null}
+    </>
+  )
+}
+
+export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdateModalProps) {
+  const { devices, runFirmwareUpdate, abortFirmwareUpdate } = useDeviceStore()
+  const device = devices.find((entry) => entry.id === deviceId)
+
   const [activeStep, setActiveStep] = useState(0)
   const [checkState, setCheckState] = useState<CheckState>('checking')
+  const [checkError, setCheckError] = useState<string | null>(null)
+  const [release, setRelease] = useState<FirmwareRelease | null>(null)
+  const [firmwarePackage, setFirmwarePackage] = useState<FirmwarePackage | null>(null)
+  const [hwRevision, setHwRevision] = useState<string | null>(null)
+
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadComplete, setDownloadComplete] = useState(false)
+  const firmwareRef = useRef<Uint8Array | null>(null)
+  const signatureRef = useRef<Uint8Array | null>(null)
+
   const [installProgress, setInstallProgress] = useState(0)
-  const [installPhase, setInstallPhase] = useState('Preparing device for OTA…')
+  const [installPhase, setInstallPhase] = useState('Preparing device…')
+  const [installError, setInstallError] = useState<string | null>(null)
+  const [installComplete, setInstallComplete] = useState(false)
+  const [installing, setInstalling] = useState(false)
+  const [updateConfirmed, setUpdateConfirmed] = useState(false)
+
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(true)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const resetState = useCallback(() => {
+    setActiveStep(0)
+    setCheckState('checking')
+    setCheckError(null)
+    setRelease(null)
+    setFirmwarePackage(null)
+    setHwRevision(null)
+    setDownloadProgress(0)
+    setDownloadError(null)
+    setDownloadComplete(false)
+    firmwareRef.current = null
+    signatureRef.current = null
+    setInstallProgress(0)
+    setInstallPhase('Preparing device…')
+    setInstallError(null)
+    setInstallComplete(false)
+    setInstalling(false)
+    setUpdateConfirmed(false)
+    setDetailsOpen(false)
+    setReleaseNotesOpen(true)
+    setCancelConfirmOpen(false)
+    abortRef.current = null
+  }, [])
 
   useEffect(() => {
     if (!opened) {
-      setActiveStep(0)
-      setCheckState('checking')
-      setDownloadProgress(0)
-      setInstallProgress(0)
-      setInstallPhase('Preparing device for OTA…')
-      setCancelConfirmOpen(false)
+      resetState()
       return
     }
+    if (!device) return
 
+    let cancelled = false
+    resetState()
     setCheckState('checking')
-    const timer = window.setTimeout(() => {
-      setCheckState(currentVersion === MOCK_LATEST_VERSION ? 'up-to-date' : 'available')
-    }, 1200)
 
-    return () => window.clearTimeout(timer)
-  }, [opened, currentVersion])
+    void (async () => {
+      try {
+        const [latestRelease, detectedHw] = await Promise.all([
+          fetchLatestRelease(),
+          queryHardwareRevision(device.transport),
+        ])
+        if (cancelled) return
+
+        const pkg = selectFirmwarePackage(latestRelease, detectedHw)
+        setRelease(latestRelease)
+        setHwRevision(detectedHw)
+
+        if (!pkg) {
+          setCheckState('incompatible')
+          setCheckError(`No signed firmware build for hardware revision ${detectedHw}.`)
+          return
+        }
+
+        setFirmwarePackage(pkg)
+        setReleaseNotesOpen(parseReleaseNotes(latestRelease.body).items.length <= NOTES_COLLAPSE_THRESHOLD)
+        setCheckState(
+          isUpdateAvailable(device.fwVersion, latestRelease.version) ? 'available' : 'up-to-date',
+        )
+      } catch (error) {
+        if (cancelled) return
+        setCheckState('error')
+        setCheckError(formatFwupError(error))
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [device, opened, resetState])
 
   useEffect(() => {
-    if (activeStep !== 1 || downloadProgress >= 100) return
+    if (!opened || activeStep !== 1 || !firmwarePackage || downloadComplete || downloadError) return
 
-    const timer = window.setInterval(() => {
-      setDownloadProgress((value) => Math.min(value + 8, 100))
-    }, 180)
+    let cancelled = false
+    setDownloadProgress(0)
+    setDownloadError(null)
 
-    return () => window.clearInterval(timer)
-  }, [activeStep, downloadProgress])
+    void (async () => {
+      try {
+        const firmware = await downloadReleaseAsset(
+          firmwarePackage.firmware,
+          (loaded, total) => {
+            if (cancelled) return
+            const percent = total > 0 ? Math.round((loaded / total) * 100) : 0
+            setDownloadProgress(percent)
+          },
+        )
+        if (cancelled) return
 
-  useEffect(() => {
-    if (activeStep !== 2 || installProgress >= 100) return
+        const signature = await downloadReleaseAsset(firmwarePackage.signature)
+        if (cancelled) return
 
-    const phases = [
-      { until: 25, label: 'Preparing device for OTA…' },
-      { until: 55, label: 'Transferring firmware image…' },
-      { until: 85, label: 'Verifying flash integrity…' },
-      { until: 100, label: 'Finalizing update…' },
-    ]
+        firmwareRef.current = firmware
+        signatureRef.current = signature
+        setDownloadProgress(100)
+        setDownloadComplete(true)
+      } catch (error) {
+        if (cancelled) return
+        setDownloadError(formatFwupError(error))
+      }
+    })()
 
-    const timer = window.setInterval(() => {
-      setInstallProgress((value) => {
-        const next = Math.min(value + 5, 100)
-        const phase = phases.find((entry) => next <= entry.until)
-        if (phase) setInstallPhase(phase.label)
-        return next
-      })
-    }, 220)
-
-    return () => window.clearInterval(timer)
-  }, [activeStep, installProgress])
+    return () => {
+      cancelled = true
+    }
+  }, [activeStep, downloadComplete, downloadError, firmwarePackage, opened])
 
   const handleClose = () => {
+    abortRef.current?.abort()
     onClose()
   }
 
-  const requiresCancelConfirmation = activeStep === 1 || activeStep === 2
+  const requiresCancelConfirmation = activeStep === 1 || (activeStep === 2 && installing)
 
   const handleRequestClose = () => {
     if (requiresCancelConfirmation) {
@@ -113,19 +369,71 @@ export function FirmwareUpdateModal({
   }
 
   const handleConfirmCancel = () => {
+    abortRef.current?.abort()
+    if (device && activeStep === 2) {
+      void abortFirmwareUpdate(device.id)
+    }
     setCancelConfirmOpen(false)
     handleClose()
   }
 
   const handleRecheck = () => {
+    if (!device) return
     setCheckState('checking')
-    window.setTimeout(() => {
-      setCheckState(currentVersion === MOCK_LATEST_VERSION ? 'up-to-date' : 'available')
-    }, 1200)
+    setCheckError(null)
+    void (async () => {
+      try {
+        const latestRelease = await fetchLatestRelease()
+        const detectedHw = await queryHardwareRevision(device.transport)
+        const pkg = selectFirmwarePackage(latestRelease, detectedHw)
+        setRelease(latestRelease)
+        setHwRevision(detectedHw)
+        if (!pkg) {
+          setCheckState('incompatible')
+          setCheckError(`No signed firmware build for hardware revision ${detectedHw}.`)
+          return
+        }
+        setFirmwarePackage(pkg)
+        setReleaseNotesOpen(parseReleaseNotes(latestRelease.body).items.length <= NOTES_COLLAPSE_THRESHOLD)
+        setCheckState(
+          isUpdateAvailable(device.fwVersion, latestRelease.version) ? 'available' : 'up-to-date',
+        )
+      } catch (error) {
+        setCheckState('error')
+        setCheckError(formatFwupError(error))
+      }
+    })()
   }
 
-  const downloadComplete = downloadProgress >= 100
-  const installComplete = installProgress >= 100
+  const handleInstall = async () => {
+    if (!device || !firmwareRef.current || !signatureRef.current) return
+
+    setInstalling(true)
+    setInstallError(null)
+    setInstallProgress(0)
+    setInstallPhase('Preparing device…')
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      await runFirmwareUpdate(device.id, firmwareRef.current, signatureRef.current, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          setInstallProgress(progress.percent)
+          setInstallPhase(progress.message)
+        },
+      })
+      setInstallComplete(true)
+      setInstallProgress(100)
+      setActiveStep(3)
+    } catch (error) {
+      setInstallError(formatFwupError(error))
+    } finally {
+      setInstalling(false)
+      abortRef.current = null
+    }
+  }
 
   const handleNext = () => {
     if (activeStep === 0 && checkState === 'available') {
@@ -134,15 +442,185 @@ export function FirmwareUpdateModal({
     }
     if (activeStep === 1 && downloadComplete) {
       setActiveStep(2)
-      return
+      void handleInstall()
     }
-    if (activeStep === 2 && installComplete) {
-      setActiveStep(3)
+    if (activeStep === 3 && installComplete) {
+      setUpdateConfirmed(true)
     }
   }
 
   const handleBack = () => {
+    if (activeStep === 2 && installing) return
+    if (activeStep >= 3) return
     setActiveStep((step) => Math.max(step - 1, 0))
+  }
+
+  if (!device) return null
+
+  const targetVersion = release?.version ?? device.fwVersion
+  const buildDate = release ? formatBuildDate(release) : ''
+  const packageSize = firmwarePackage ? formatBytes(firmwarePackage.firmware.size) : ''
+  const hwLabel = hwRevision ?? device.hwVersion
+  const showReleaseNotes = Boolean(release?.body && checkState === 'available')
+
+  const getPrimaryAction = (): PrimaryAction => {
+    if (updateConfirmed) {
+      return { label: 'Close', enabled: true, onClick: handleClose }
+    }
+
+    if (activeStep === 0) {
+      if (checkState === 'checking') {
+        return { label: 'Continue', enabled: false, reason: 'Waiting for release check…' }
+      }
+      if (checkState === 'available') {
+        return { label: 'Continue', enabled: true, onClick: handleNext }
+      }
+      return { label: 'Close', enabled: true, onClick: handleClose }
+    }
+
+    if (activeStep === 1) {
+      if (downloadError) return { label: 'Close', enabled: true, onClick: handleClose }
+      if (!downloadComplete) {
+        return {
+          label: 'Install update',
+          enabled: false,
+          reason: downloadProgress > 0 ? `Downloading… ${downloadProgress}%` : 'Downloading firmware…',
+        }
+      }
+      return { label: 'Install update', enabled: true, onClick: handleNext, loading: installing }
+    }
+
+    if (activeStep === 2) {
+      if (installError) return { label: 'Close', enabled: true, onClick: handleClose }
+      if (installing) {
+        return { label: 'Installing…', enabled: false, reason: installPhase, loading: true }
+      }
+      return { label: 'Installing…', enabled: false, reason: 'Waiting to start install…' }
+    }
+
+    if (activeStep === 3 && installComplete) {
+      return { label: 'Complete update', enabled: true, onClick: handleNext }
+    }
+
+    return { label: 'Close', enabled: true, onClick: handleClose }
+  }
+
+  const primaryAction = getPrimaryAction()
+  const showBack = activeStep > 0 && activeStep < 3 && !installing && !updateConfirmed
+
+  const renderStepDetail = (stepIndex: number): ReactNode => {
+    const isActive = activeStep === stepIndex || (updateConfirmed && stepIndex === 3)
+    if (!isActive) return null
+
+    if (stepIndex === 0) {
+      if (checkState === 'checking') {
+        return (
+          <>
+            <div className={classes.inlineStatus}>
+              <Loader size="xs" color="gray" />
+              <Text className={classes.mutedText}>Checking releases…</Text>
+            </div>
+          </>
+        )
+      }
+      if (checkState === 'available') {
+        return <Text className={classes.bodyText}>Update available for your hardware.</Text>
+      }
+      if (checkState === 'up-to-date') {
+        return (
+          <>
+            <Text className={classes.bodyText}>Device matches latest bundled release.</Text>
+            <Button
+              leftSection={<IconRefresh size={12} />}
+              variant="subtle"
+              size="compact-xs"
+              className={classes.compactButton}
+              onClick={handleRecheck}
+            >
+              Check again
+            </Button>
+          </>
+        )
+      }
+      if ((checkState === 'error' || checkState === 'incompatible') && checkError) {
+        return (
+          <>
+            <Text className={classes.errorText}>{checkError}</Text>
+            <Button
+              leftSection={<IconRefresh size={12} />}
+              variant="subtle"
+              size="compact-xs"
+              className={classes.compactButton}
+              onClick={handleRecheck}
+            >
+              Try again
+            </Button>
+          </>
+        )
+      }
+      return null
+    }
+
+    if (stepIndex === 1) {
+      return (
+        <>
+          <ProgressBar value={downloadProgress} animated={!downloadComplete && !downloadError} />
+          <div className={classes.progressMeta}>
+            <Text className={classes.progressLabel}>
+              {downloadError ? 'Failed' : downloadComplete ? 'Ready' : 'Downloading…'}
+            </Text>
+            <Text className={clsx(classes.progressValue, classes.progressPercent)}>
+              {downloadProgress}%
+            </Text>
+          </div>
+          {downloadError ? <Text className={classes.errorText}>{downloadError}</Text> : null}
+        </>
+      )
+    }
+
+    if (stepIndex === 2) {
+      return (
+        <>
+          <Text className={classes.mutedText}>Keep USB connected. Outputs disabled.</Text>
+          <ProgressBar value={installProgress} animated={installing && !installComplete} />
+          <div className={classes.progressMeta}>
+            <Text className={classes.progressLabel} lineClamp={2}>
+              {installError ? 'Failed' : installing ? installPhase : 'Waiting…'}
+            </Text>
+            <Text className={clsx(classes.progressValue, classes.progressPercent)}>
+              {installProgress}%
+            </Text>
+          </div>
+          {installError ? <Text className={classes.errorText}>{installError}</Text> : null}
+        </>
+      )
+    }
+
+    if (stepIndex === 3) {
+      if (updateConfirmed) {
+        return (
+          <div className={classes.successCompact}>
+            <div className={classes.successTitle}>
+              <IconCheck size={14} stroke={2.5} className={classes.successIcon} />
+              Update complete
+            </div>
+            <Text className={classes.mutedText}>
+              Running v{targetVersion}. Refresh status if needed.
+            </Text>
+          </div>
+        )
+      }
+      return (
+        <>
+          <Text className={classes.bodyText}>Firmware v{targetVersion} written to device.</Text>
+          <Text className={classes.mutedText}>
+            Confirm once reconnected and version reads v{targetVersion}.
+          </Text>
+        </>
+      )
+    }
+
+    return null
   }
 
   return (
@@ -150,254 +628,185 @@ export function FirmwareUpdateModal({
       <Modal
         opened={opened}
         onClose={handleRequestClose}
-        title={`Firmware update — ${deviceName}`}
-        size="lg"
+        withCloseButton={false}
+        padding={0}
         centered
+        size={720}
+        closeOnClickOutside={!installing}
+        closeOnEscape={!installing}
+        classNames={{
+          body: classes.modalBody,
+          content: classes.modalContent,
+        }}
       >
-        <Stack gap="lg">
-          <Group gap="xs">
-            <Text size="sm" c="dimmed">
-              Serial
-            </Text>
-            <Code>{serialNumber}</Code>
-            <Text size="sm" c="dimmed">
-              ·
-            </Text>
-            <Text size="sm" c="dimmed">
-              Installed
-            </Text>
-            <Code>v{currentVersion}</Code>
-          </Group>
+        <div className={classes.modalShell}>
+          <header className={classes.modalHeader}>
+            <div className={classes.modalTitleGroup}>
+              <span className={classes.modalTitle}>Firmware update</span>
+              <span className={classes.modalSubtitle}>{device.name}</span>
+            </div>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size="md"
+              aria-label="Close"
+              className={classes.modalClose}
+              onClick={handleRequestClose}
+            >
+              <IconX size={18} stroke={1.75} />
+            </ActionIcon>
+          </header>
 
-          <Stepper active={activeStep} allowNextStepsSelect={false}>
-            <Stepper.Step label="Check" description="Release channel">
-              <Box mih={STEP_CONTENT_MIN_HEIGHT}>
-                <Stack gap="md" mt="md">
-                  {checkState === 'checking' ? (
-                    <>
-                      <Text size="sm" c="dimmed">
-                        Querying the release server for the latest firmware build compatible with your
-                        hardware revision.
-                      </Text>
-                      <Group gap="sm">
-                        <Loader size="sm" />
-                        <Text size="sm">Checking releases…</Text>
-                      </Group>
-                    </>
-                  ) : null}
+          <div className={classes.columns}>
+            <div className={classes.leftColumn}>
+              <VersionHero
+                installedVersion={device.fwVersion}
+                targetVersion={targetVersion}
+                checking={checkState === 'checking'}
+                upToDate={checkState === 'up-to-date'}
+              />
 
-                  {checkState === 'available' ? (
-                    <Stack gap="sm">
-                      <Alert color="blue" variant="light" title="Update available">
-                        <Group gap="xs">
-                          <Text size="sm">Latest release:</Text>
-                          <Code>v{MOCK_LATEST_VERSION}</Code>
-                          <Text size="sm" c="dimmed">
-                            (you have v{currentVersion})
-                          </Text>
-                        </Group>
-                      </Alert>
-                      <Text size="sm" fw={500}>
-                        Release notes
-                      </Text>
-                      <List size="sm" spacing={4}>
-                        {MOCK_RELEASE_NOTES.map((note) => (
-                          <List.Item key={note}>{note}</List.Item>
-                        ))}
-                      </List>
-                      <Text size="xs" c="dimmed">
-                        Package size: 412 KB · Signed build for HW rev A/B
-                      </Text>
-                    </Stack>
-                  ) : null}
-
-                  {checkState === 'up-to-date' ? (
-                    <Stack gap="sm">
-                      <Alert
-                        color="green"
-                        variant="light"
-                        icon={<IconCircleCheck size={16} />}
-                        title="Up to date"
-                      >
-                        <Text size="sm">
-                          v{currentVersion} is the latest firmware on the release channel.
-                        </Text>
-                      </Alert>
-                      <Button
-                        leftSection={<IconRefresh size={16} />}
-                        variant="subtle"
-                        w="fit-content"
-                        onClick={handleRecheck}
-                      >
-                        Check again
-                      </Button>
-                    </Stack>
-                  ) : null}
-                </Stack>
-              </Box>
-            </Stepper.Step>
-
-            <Stepper.Step label="Download" description="Fetch image">
-              <Box mih={STEP_CONTENT_MIN_HEIGHT}>
-                <Stack gap="md" mt="md">
-                  <Text size="sm" c="dimmed">
-                    Downloading protov-mini-v{MOCK_LATEST_VERSION}.bin from the release CDN.
-                  </Text>
-                  <Progress
-                    value={downloadProgress}
-                    size="lg"
-                    radius="xl"
-                    animated={!downloadComplete}
-                  />
-                  <Group justify="space-between">
-                    <Text size="sm" c="dimmed">
-                      {downloadComplete ? 'Download complete' : 'Downloading…'}
-                    </Text>
-                    <Text size="sm" fw={500}>
-                      {downloadProgress}%
-                    </Text>
-                  </Group>
-                  {!downloadComplete ? (
-                    <Group gap="sm">
-                      <Loader size="sm" />
-                      <Text size="sm">412 KB / 412 KB</Text>
-                    </Group>
-                  ) : (
-                    <Alert
-                      color="green"
-                      variant="light"
-                      icon={<IconDownload size={16} />}
-                      title="Ready to install"
-                    >
-                      Firmware image verified and cached locally.
-                    </Alert>
-                  )}
-                </Stack>
-              </Box>
-            </Stepper.Step>
-
-            <Stepper.Step label="Install" description="OTA flash">
-              <Box mih={STEP_CONTENT_MIN_HEIGHT}>
-                <Stack gap="md" mt="md">
-                  <Alert
-                    color="yellow"
-                    variant="light"
-                    icon={<IconAlertTriangle size={16} />}
-                    title="Keep the device connected"
+              <div className={classes.leftScroll}>
+                {showReleaseNotes && release ? (
+                  <Disclosure
+                    label="Release notes"
+                    opened={releaseNotesOpen}
+                    onToggle={() => setReleaseNotesOpen((value) => !value)}
                   >
-                    Do not disconnect USB or power off the device while the OTA update is in progress.
-                    Outputs will be disabled during flashing.
-                  </Alert>
-                  <Text size="sm">{installPhase}</Text>
-                  <Progress
-                    value={installProgress}
-                    size="lg"
-                    radius="xl"
-                    animated={!installComplete}
-                  />
-                  <Group justify="space-between">
-                    <Text size="sm" c="dimmed">
-                      {installComplete ? 'Flash complete' : 'Flashing…'}
-                    </Text>
-                    <Text size="sm" fw={500}>
-                      {installProgress}%
-                    </Text>
-                  </Group>
-                </Stack>
-              </Box>
-            </Stepper.Step>
+                    <ReleaseNotesPanel body={release.body} />
+                  </Disclosure>
+                ) : null}
 
-            <Stepper.Completed>
-              <Box mih={STEP_CONTENT_MIN_HEIGHT}>
-                <Stack gap="md" mt="md" align="center" justify="center" h="100%">
-                  <IconCircleCheck size={48} stroke={1.5} color="var(--mantine-color-green-6)" />
-                  <Stack gap={4} align="center">
-                    <Text fw={600}>Update complete</Text>
-                    <Text size="sm" c="dimmed" ta="center">
-                      {deviceName} is now running v{MOCK_LATEST_VERSION}. The device rebooted and should
-                      reconnect automatically.
-                    </Text>
-                  </Stack>
-                </Stack>
-              </Box>
-            </Stepper.Completed>
-          </Stepper>
+                {release ? (
+                  <Disclosure label="Details" opened={detailsOpen} onToggle={() => setDetailsOpen((v) => !v)}>
+                    <div className={classes.detailsGrid}>
+                      <div className={classes.detailRow}>
+                        <span className={classes.detailLabel}>Serial</span>
+                        <span className={classes.detailValue}>{device.serialNumber}</span>
+                      </div>
+                      <div className={classes.detailRow}>
+                        <span className={classes.detailLabel}>Hardware</span>
+                        <span className={classes.detailValue}>{hwLabel}</span>
+                      </div>
+                      <div className={classes.detailRow}>
+                        <span className={classes.detailLabel}>Build date</span>
+                        <span className={classes.detailValue}>{buildDate}</span>
+                      </div>
+                      {firmwarePackage ? (
+                        <>
+                          <div className={classes.detailRow}>
+                            <span className={classes.detailLabel}>Package</span>
+                            <span className={classes.detailValue}>{firmwarePackage.firmware.name}</span>
+                          </div>
+                          <div className={classes.detailRow}>
+                            <span className={classes.detailLabel}>Size</span>
+                            <span className={classes.detailValue}>{packageSize}</span>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  </Disclosure>
+                ) : null}
+              </div>
+            </div>
 
-          <Group justify="space-between">
-            {activeStep > 0 && activeStep < 3 ? (
-              <Button variant="default" onClick={handleBack}>
-                Back
+            <div className={classes.rightColumn}>
+              <span className={classes.statusLabel}>Progress</span>
+              <ol className={classes.stepper}>
+                {STEPS.map((step, index) => {
+                  const isComplete =
+                    updateConfirmed ||
+                    index < activeStep ||
+                    (index === 2 && installComplete && activeStep >= 3)
+                  const isActive = !updateConfirmed && activeStep === index
+
+                  return (
+                    <li
+                      key={step.key}
+                      className={clsx(
+                        classes.stepRow,
+                        isComplete && classes.stepRowComplete,
+                        (isActive || (updateConfirmed && index === 3)) && classes.stepRowActive,
+                      )}
+                    >
+                      <div className={classes.stepRail}>
+                        <div className={classes.stepDot}>
+                          {isComplete ? <IconCheck size={11} stroke={2.5} /> : index + 1}
+                        </div>
+                        <div className={classes.stepLine} />
+                      </div>
+                      <div className={classes.stepMain}>
+                        <span className={classes.stepTitle}>{step.label}</span>
+                        <div className={classes.stepDetailSlot}>
+                          <div className={classes.stepDetailInner}>{renderStepDetail(index)}</div>
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
+          </div>
+
+          <div className={classes.footer}>
+            {!primaryAction.enabled && primaryAction.reason ? (
+              <Text className={classes.footerReason}>{primaryAction.reason}</Text>
+            ) : null}
+            <div className={classes.footerActions}>
+              {showBack ? (
+                <Button variant="subtle" color="gray" onClick={handleBack}>
+                  Back
+                </Button>
+              ) : null}
+              <Button
+                onClick={primaryAction.onClick}
+                disabled={!primaryAction.enabled}
+                loading={primaryAction.loading}
+              >
+                {primaryAction.label}
               </Button>
-            ) : (
-              <span />
-            )}
-
-            {activeStep === 0 && checkState === 'available' ? (
-              <Button onClick={handleNext}>Continue</Button>
-            ) : null}
-
-            {activeStep === 1 && downloadComplete ? (
-              <Button onClick={handleNext}>Install update</Button>
-            ) : null}
-
-            {activeStep === 2 && installComplete ? (
-              <Button onClick={handleNext}>Finish</Button>
-            ) : null}
-
-            {activeStep === 3 || checkState === 'up-to-date' ? (
-              <Button onClick={handleClose}>Close</Button>
-            ) : null}
-          </Group>
-        </Stack>
+            </div>
+          </div>
+        </div>
       </Modal>
 
       <Modal
         opened={cancelConfirmOpen}
-        onClose={() => {
-          setCancelConfirmOpen(false)
-        }}
+        onClose={() => setCancelConfirmOpen(false)}
         title={activeStep === 1 ? 'Cancel download?' : 'Cancel firmware update?'}
         centered
         size="sm"
       >
-        <Stack gap="lg">
+        <div className={classes.cancelBody}>
           {activeStep === 1 ? (
-            <Text size="sm">
-              The firmware image is still downloading. Closing now will stop the download and discard
-              any progress. You can check for updates again later.
+            <Text className={classes.bodyText}>
+              The firmware image is still downloading. Closing now stops the download and discards
+              progress.
             </Text>
           ) : (
-            <Stack gap="sm">
-              <Text size="sm">
-                An OTA update is in progress on {deviceName}. Closing this window will not stop the
-                flash on the device, but you will lose visibility into progress and recovery steps.
+            <>
+              <Text className={classes.bodyText}>
+                An install is in progress on {device.name}. Closing attempts to abort the session,
+                but the device may still be writing firmware.
               </Text>
-              <Alert
-                color="red"
-                variant="light"
-                icon={<IconAlertTriangle size={16} />}
-                title="Risk of bricking"
-              >
-                Interrupting an in-progress flash may leave the device unresponsive. Keep USB connected
-                and wait for the update to finish unless instructed otherwise.
-              </Alert>
-            </Stack>
+              <div className={classes.callout}>
+                <Text className={classes.bodyText}>
+                  Prefer waiting until the progress bar completes. Interrupting mid-flash can leave
+                  the device unresponsive.
+                </Text>
+              </div>
+            </>
           )}
 
-          <Group justify="flex-end">
-            <Button
-              variant="default"
-              onClick={() => {
-                setCancelConfirmOpen(false)
-              }}
-            >
-              {activeStep === 1 ? 'Keep downloading' : 'Keep updating'}
+          <div className={classes.footerActions}>
+            <Button variant="subtle" color="gray" onClick={() => setCancelConfirmOpen(false)}>
+              {activeStep === 1 ? 'Keep downloading' : 'Keep installing'}
             </Button>
-            <Button color="red" onClick={handleConfirmCancel}>
+            <Button variant="default" onClick={handleConfirmCancel}>
               {activeStep === 1 ? 'Cancel download' : 'Close anyway'}
             </Button>
-          </Group>
-        </Stack>
+          </div>
+        </div>
       </Modal>
     </>
   )

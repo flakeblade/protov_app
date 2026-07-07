@@ -11,6 +11,12 @@ export interface SerialTransport {
   close(): Promise<void>
   query(command: string, timeoutMs?: number): Promise<string>
   write(command: string): Promise<void>
+  /** Raw SCPI line bytes (required for FWUP DATA blocks). */
+  writeBytes?(data: Uint8Array): Promise<void>
+  /** Read one response line without sending a command (FWUP DATA ack). */
+  readLine?(timeoutMs?: number): Promise<string>
+  /** Discard buffered response lines for up to `timeoutMs`. */
+  drainIncoming?(timeoutMs: number): Promise<string[]>
   /** Fired on unplug or unexpected link drop. Returns an unsubscribe function. */
   onConnectionLost?(handler: ConnectionLostHandler): () => void
 }
