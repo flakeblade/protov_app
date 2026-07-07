@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { usePersistSectionPath } from '../hooks/usePersistSectionPath'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useDisclosure } from '@mantine/hooks'
 import { AppShell, Burger } from '@mantine/core'
@@ -14,6 +15,7 @@ import shellClasses from '../docs/docsSidebar.module.css'
 
 export default function DocsPage() {
   const isMobile = useIsMobile()
+  usePersistSectionPath('docs')
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure()
   const { '*': splat = '' } = useParams()
   const segment = splat.split('/').filter(Boolean)[0]

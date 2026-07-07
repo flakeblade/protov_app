@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { usePersistSectionPath } from '../hooks/usePersistSectionPath'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useDisclosure } from '@mantine/hooks'
 import { AppShell, Burger } from '@mantine/core'
@@ -41,6 +42,7 @@ function LabRoutes() {
 export default function LabApp() {
   const isMobile = useIsMobile()
   const location = useLocation()
+  usePersistSectionPath('lab')
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure()
   const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true)
 

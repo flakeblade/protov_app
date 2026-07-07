@@ -32,4 +32,27 @@ test.describe('Cross-app navigation', () => {
     await app.clickNavLink('Lab')
     await lab.expectDevices()
   })
+
+  test('returns to the last lab page after visiting docs', async ({ app, lab, docs }) => {
+    await lab.gotoControls()
+    await lab.expectControls()
+
+    await app.clickNavLink('Docs')
+    await docs.expectOverview()
+
+    await app.clickNavLink('Lab')
+    await lab.expectControls()
+  })
+
+  test('returns to the last docs page after visiting lab', async ({ app, lab, docs }) => {
+    await docs.gotoOverview()
+    await docs.openHardware()
+    await docs.expectHardware()
+
+    await app.clickNavLink('Lab')
+    await lab.expectDevices()
+
+    await app.clickNavLink('Docs')
+    await docs.expectHardware()
+  })
 })

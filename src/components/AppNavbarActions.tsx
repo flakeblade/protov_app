@@ -11,6 +11,7 @@ import {
 import { Link } from 'react-router-dom'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useNavPage } from '../hooks/useNavPage'
+import { getDocsReturnPath, getLabReturnPath } from '../navigation/sectionReturnPath'
 import { ActionToggle } from '../lab/components/theme_toggle'
 import classes from './AppNavbarActions.module.css'
 
@@ -79,7 +80,7 @@ export function AppNavbarActions() {
       )}
       {page !== 'lab' && (
         <NavActionButton
-          to="/lab/devices"
+          to={getLabReturnPath()}
           icon={<IconFlask size={16} />}
           label="Lab"
           className={classes.navButton}
@@ -87,7 +88,7 @@ export function AppNavbarActions() {
       )}
       {page !== 'docs' && (
         <NavActionButton
-          to="/docs"
+          to={getDocsReturnPath()}
           icon={<IconBook size={16} />}
           label="Docs"
           className={classes.navButton}
