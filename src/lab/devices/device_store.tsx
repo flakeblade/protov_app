@@ -43,6 +43,8 @@ interface DeviceStoreValue {
     },
   ) => Promise<void>
   abortFirmwareUpdate: (deviceId: string) => Promise<void>
+  beginFwupSession: (deviceId: string) => void
+  endFwupSession: (deviceId: string) => void
 }
 
 const DeviceStateContext = createContext<{
@@ -74,6 +76,8 @@ const DeviceActionsContext = createContext<{
     },
   ) => Promise<void>
   abortFirmwareUpdate: (deviceId: string) => Promise<void>
+  beginFwupSession: (deviceId: string) => void
+  endFwupSession: (deviceId: string) => void
 } | null>(null)
 
 function deviceBadges(device: LabDevice): DeviceBadge[] {
@@ -186,6 +190,14 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
     await deviceRuntime.abortFirmwareUpdate(deviceId)
   }, [])
 
+  const beginFwupSession = useCallback((deviceId: string) => {
+    deviceRuntime.beginFwupSession(deviceId)
+  }, [])
+
+  const endFwupSession = useCallback((deviceId: string) => {
+    deviceRuntime.endFwupSession(deviceId)
+  }, [])
+
   const stateValue = useMemo(
     () => ({
       devices,
@@ -206,6 +218,8 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       disableAllOutputs,
       runFirmwareUpdate,
       abortFirmwareUpdate,
+      beginFwupSession,
+      endFwupSession,
     }),
     [
       connectDevice,
@@ -218,6 +232,8 @@ export function DeviceStoreProvider({ children }: DeviceStoreProviderProps) {
       disableAllOutputs,
       runFirmwareUpdate,
       abortFirmwareUpdate,
+      beginFwupSession,
+      endFwupSession,
     ],
   )
 

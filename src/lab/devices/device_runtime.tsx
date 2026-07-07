@@ -82,6 +82,8 @@ class DeviceRuntime {
   private readonly pollFailures = new Map<string, number>()
   private readonly disconnecting = new Set<string>()
   private readonly fwupDevices = new Set<string>()
+  private readonly fwupSessionDevices = new Set<string>()
+  private readonly pendingLinkLostRemoval = new Set<string>()
   private readonly linkUnsubscribers = new Map<string, () => void>()
   private pollTimer: number | null = null
   private pollInFlight = false
@@ -213,7 +215,38 @@ class DeviceRuntime {
 
   handleConnectionLost(deviceId: string): void {
     if (this.disconnecting.has(deviceId)) return
+    if (this.fwupDevices.has(deviceId) || this.fwupSessionDevices.has(deviceId)) {
+      this.pendingLinkLostRemoval.add(deviceId)
+      this.updateDevice(deviceId, (device) =>
+        device.linkLost ? device : { ...device, linkLost: true },
+      )
+      notifications.show({
+        id: `device-link-lost-fwup-${deviceId}`,
+        title: 'Device disconnected',
+        message:
+          'The serial link dropped — common during OTA reboot. The update window stays open; reconnect when the device returns.',
+        color: 'orange',
+        icon: <IconPlugConnectedX size={18} />,
+      })
+      return
+    }
     void this.removeDevice(deviceId, 'lost')
+  }
+
+  beginFwupSession(deviceId: string): void {
+    this.fwupSessionDevices.add(deviceId)
+  }
+
+  endFwupSession(deviceId: string): void {
+    this.fwupSessionDevices.delete(deviceId)
+    if (this.pendingLinkLostRemoval.has(deviceId)) {
+      this.pendingLinkLostRemoval.delete(deviceId)
+      void this.removeDevice(deviceId, 'lost')
+    }
+  }
+
+  getDevice(deviceId: string): LabDevice | undefined {
+    return this.devices.find((entry) => entry.id === deviceId)
   }
 
   private notifyChannelFaults(
@@ -317,6 +350,9 @@ class DeviceRuntime {
       })
 
       for (const deviceId of lostDeviceIds) {
+        if (this.fwupSessionDevices.has(deviceId) || this.fwupDevices.has(deviceId)) {
+          continue
+        }
         void this.removeDevice(deviceId, 'lost')
       }
     } finally {
@@ -356,7 +392,8 @@ class DeviceRuntime {
       serialDebug('connectDevice: probing device')
       const probed = await openAndProbeTransport(transport)
 
-      if (deviceSession.has(probed.serialNumber)) {
+      const existing = this.devices.find((entry) => entry.id === probed.serialNumber)
+      if (existing && !existing.linkLost && deviceSession.has(probed.serialNumber)) {
         await transport.close()
         notifications.show({
           id: 'device-already-connected',
@@ -367,18 +404,58 @@ class DeviceRuntime {
         return
       }
 
-      const colorSlot = acquireColorSlot(
-        probed.serialNumber,
-        this.devices,
-        this.serialColorSlots,
-      )
-      rememberColorSlot(this.serialColorSlots, probed.serialNumber, colorSlot)
+      const colorSlot =
+        existing?.colorSlot ??
+        acquireColorSlot(probed.serialNumber, this.devices, this.serialColorSlots)
+      if (!existing) {
+        rememberColorSlot(this.serialColorSlots, probed.serialNumber, colorSlot)
+      }
       await applyDeviceColorScheme(transport, colorSlot)
       const channels = await pollDeviceChannels(transport, probed.channels)
       const telemetry = await pollDeviceTelemetry(transport).catch(() => EMPTY_TELEMETRY)
       const display = await pollDeviceDisplaySettings(transport).catch(
         () => DEFAULT_DISPLAY_SETTINGS,
       )
+
+      if (existing?.linkLost) {
+        this.unregisterDeviceLink(existing.id)
+        try {
+          await existing.transport.close()
+        } catch {
+          // Port may already be closed after an OTA reboot.
+        }
+
+        this.updateDevice(existing.id, (device) => ({
+          ...device,
+          port: probed.port,
+          fwVersion: probed.fwVersion,
+          hwVersion: probed.hwVersion,
+          channels,
+          telemetry,
+          display,
+          transport,
+          linkLost: false,
+        }))
+
+        this.pendingLinkLostRemoval.delete(existing.id)
+        this.pollFailures.delete(existing.id)
+
+        const reconnected = this.devices.find((entry) => entry.id === existing.id)
+        if (reconnected) {
+          this.registerDeviceLink(reconnected)
+        }
+
+        notifications.show({
+          id: 'device-reconnected',
+          title: 'Device reconnected',
+          message: `${probed.name} (${probed.serialNumber}) is back online.`,
+          color: 'green',
+          icon: <IconPlugConnected size={18} />,
+        })
+        return
+      }
+
+      const colorSlotForNew = colorSlot
 
       this.replace((current) => [
         ...current,
@@ -393,7 +470,7 @@ class DeviceRuntime {
           channels,
           telemetry,
           display,
-          colorSlot,
+          colorSlot: colorSlotForNew,
           transport,
         },
       ])
@@ -443,6 +520,15 @@ class DeviceRuntime {
   }
 
   async disconnect(deviceId: string): Promise<void> {
+    if (this.fwupDevices.has(deviceId)) {
+      notifications.show({
+        id: `device-disconnect-blocked-${deviceId}`,
+        title: 'Firmware update in progress',
+        message: 'Wait for the flash to finish or close the update window before disconnecting.',
+        color: 'yellow',
+      })
+      return
+    }
     await this.removeDevice(deviceId, 'manual')
   }
 

@@ -31,6 +31,7 @@ import {
   type FirmwareRelease,
 } from '../firmware/releases'
 import { useDeviceStore } from '../devices/device_store'
+import type { LabDevice } from '../devices/device_types'
 import classes from './firmware_update_modal.module.css'
 
 const STEPS = [
@@ -48,6 +49,24 @@ interface FirmwareUpdateModalProps {
   opened: boolean
   onClose: () => void
   deviceId: string
+}
+
+interface FirmwareUpdateDeviceSnapshot {
+  id: string
+  name: string
+  serialNumber: string
+  fwVersion: string
+  hwVersion: string
+}
+
+function snapshotFromDevice(device: LabDevice): FirmwareUpdateDeviceSnapshot {
+  return {
+    id: device.id,
+    name: device.name,
+    serialNumber: device.serialNumber,
+    fwVersion: device.fwVersion,
+    hwVersion: device.hwVersion,
+  }
 }
 
 interface PrimaryAction {
@@ -218,8 +237,14 @@ function ReleaseNotesPanel({ body }: { body: string }) {
 }
 
 export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdateModalProps) {
-  const { devices, runFirmwareUpdate, abortFirmwareUpdate } = useDeviceStore()
-  const device = devices.find((entry) => entry.id === deviceId)
+  const { devices, runFirmwareUpdate, abortFirmwareUpdate, beginFwupSession, endFwupSession } =
+    useDeviceStore()
+  const liveDevice = devices.find((entry) => entry.id === deviceId)
+  const [snapshot, setSnapshot] = useState<FirmwareUpdateDeviceSnapshot | null>(null)
+
+  const device = liveDevice ?? snapshot
+  const linkLost = liveDevice?.linkLost ?? (snapshot !== null && !liveDevice)
+  const transport = liveDevice?.transport
 
   const [activeStep, setActiveStep] = useState(0)
   const [checkState, setCheckState] = useState<CheckState>('checking')
@@ -245,6 +270,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(true)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const initialCheckStartedRef = useRef(false)
 
   const resetState = useCallback(() => {
     setActiveStep(0)
@@ -273,10 +299,27 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   useEffect(() => {
     if (!opened) {
       resetState()
+      setSnapshot(null)
+      initialCheckStartedRef.current = false
       return
     }
-    if (!device) return
+    if (!deviceId) return
 
+    beginFwupSession(deviceId)
+    return () => {
+      endFwupSession(deviceId)
+    }
+  }, [beginFwupSession, deviceId, endFwupSession, opened, resetState])
+
+  useEffect(() => {
+    if (!opened || !liveDevice) return
+    setSnapshot(snapshotFromDevice(liveDevice))
+  }, [liveDevice, opened])
+
+  useEffect(() => {
+    if (!opened || !transport || !device || initialCheckStartedRef.current) return
+
+    initialCheckStartedRef.current = true
     let cancelled = false
     resetState()
     setCheckState('checking')
@@ -285,7 +328,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
       try {
         const [latestRelease, detectedHw] = await Promise.all([
           fetchLatestRelease(),
-          queryHardwareRevision(device.transport),
+          queryHardwareRevision(transport),
         ])
         if (cancelled) return
 
@@ -314,7 +357,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     return () => {
       cancelled = true
     }
-  }, [device, opened, resetState])
+  }, [device, opened, resetState, transport])
 
   useEffect(() => {
     if (!opened || activeStep !== 1 || !firmwarePackage || downloadComplete || downloadError) return
@@ -370,21 +413,25 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
 
   const handleConfirmCancel = () => {
     abortRef.current?.abort()
-    if (device && activeStep === 2) {
-      void abortFirmwareUpdate(device.id)
+    if (liveDevice && activeStep === 2) {
+      void abortFirmwareUpdate(liveDevice.id)
     }
     setCancelConfirmOpen(false)
     handleClose()
   }
 
   const handleRecheck = () => {
-    if (!device) return
+    if (!device || !transport) {
+      setCheckState('error')
+      setCheckError('Device is disconnected. Reconnect it from the Devices page, then check again.')
+      return
+    }
     setCheckState('checking')
     setCheckError(null)
     void (async () => {
       try {
         const latestRelease = await fetchLatestRelease()
-        const detectedHw = await queryHardwareRevision(device.transport)
+        const detectedHw = await queryHardwareRevision(transport)
         const pkg = selectFirmwarePackage(latestRelease, detectedHw)
         setRelease(latestRelease)
         setHwRevision(detectedHw)
@@ -406,7 +453,10 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   }
 
   const handleInstall = async () => {
-    if (!device || !firmwareRef.current || !signatureRef.current) return
+    if (!device || !transport || !firmwareRef.current || !signatureRef.current) {
+      setInstallError('Device is not connected. Reconnect USB and try again.')
+      return
+    }
 
     setInstalling(true)
     setInstallError(null)
@@ -455,9 +505,10 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     setActiveStep((step) => Math.max(step - 1, 0))
   }
 
-  if (!device) return null
+  if (!opened || !device) return null
 
-  const targetVersion = release?.version ?? device.fwVersion
+  const installedVersion = liveDevice?.fwVersion ?? device.fwVersion
+  const targetVersion = release?.version ?? installedVersion
   const buildDate = release ? formatBuildDate(release) : ''
   const packageSize = firmwarePackage ? formatBytes(firmwarePackage.firmware.size) : ''
   const hwLabel = hwRevision ?? device.hwVersion
@@ -614,7 +665,9 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
         <>
           <Text className={classes.bodyText}>Firmware v{targetVersion} written to device.</Text>
           <Text className={classes.mutedText}>
-            Confirm once reconnected and version reads v{targetVersion}.
+            {linkLost
+              ? 'Reconnect the device, then confirm once *IDN? reports the new version.'
+              : `Confirm once reconnected and version reads v${targetVersion}.`}
           </Text>
         </>
       )
@@ -660,11 +713,18 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
           <div className={classes.columns}>
             <div className={classes.leftColumn}>
               <VersionHero
-                installedVersion={device.fwVersion}
+                installedVersion={installedVersion}
                 targetVersion={targetVersion}
                 checking={checkState === 'checking'}
                 upToDate={checkState === 'up-to-date'}
               />
+
+              {linkLost ? (
+                <Text className={classes.linkLostBanner}>
+                  Device disconnected — this is normal during OTA reboot. Reconnect from the Devices
+                  page when the device returns, then confirm the new version.
+                </Text>
+              ) : null}
 
               <div className={classes.leftScroll}>
                 {showReleaseNotes && release ? (

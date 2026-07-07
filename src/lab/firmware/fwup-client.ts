@@ -9,6 +9,12 @@ import {
   FWUP_STAR_TIMEOUT_MS,
 } from './constants'
 
+/**
+ * Web FWUP sequence mirrors protov/scripts/fwup_upload.py:
+ * SYST:FWUP:STAR → poll STAT? until RECV/READY → SYST:FWUP:DATA #Nd blocks → SYST:FWUP:APPL #H<sig>.
+ * The browser client additionally flushes stale lines / SYST:ERR? before STAR.
+ */
+
 export type FwupPhase = 'idle' | 'prepare' | 'transfer' | 'verify' | 'complete' | 'error'
 
 export interface FwupProgress {

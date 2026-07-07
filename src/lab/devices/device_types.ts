@@ -16,4 +16,6 @@ export interface LabDevice {
   display: DeviceDisplaySettings
   colorSlot: number
   transport: SerialTransport
+  /** USB link dropped; device row kept alive during firmware update UI sessions. */
+  linkLost?: boolean
 }
