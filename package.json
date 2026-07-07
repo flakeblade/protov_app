@@ -11,6 +11,7 @@
     "prebuild": "npm run bundle:firmware && mkdir -p public/models && cp src/assets/3d/scene_backup.glb public/models/scene.glb",
     "bundle:firmware": "node scripts/bundle-firmware.mjs",
     "dev": "vite",
+    "predev:webserial": "npm run bundle:firmware",
     "dev:webserial": "vite --mode webserial",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
