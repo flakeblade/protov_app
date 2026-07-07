@@ -1,7 +1,7 @@
 {
   "name": "protov_app",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "homepage": "https://protov.app/",
   "engines": {
