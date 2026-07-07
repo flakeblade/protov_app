@@ -44,6 +44,7 @@ const STEPS = [
 ] as const
 
 const REBOOT_WAIT_MS = 60_000
+const REBOOT_PROGRESS_MS = 18_000
 
 const NOTES_COLLAPSE_THRESHOLD = 3
 
@@ -276,6 +277,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   const [installComplete, setInstallComplete] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [postInstallPhase, setPostInstallPhase] = useState<PostInstallPhase>('none')
+  const [rebootProgress, setRebootProgress] = useState(0)
   const [reconnecting, setReconnecting] = useState(false)
   const [reconnectError, setReconnectError] = useState<string | null>(null)
   const [verifiedFwVersion, setVerifiedFwVersion] = useState<string | null>(null)
@@ -304,6 +306,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     setInstallComplete(false)
     setInstalling(false)
     setPostInstallPhase('none')
+    setRebootProgress(0)
     setReconnecting(false)
     setReconnectError(null)
     setVerifiedFwVersion(null)
@@ -412,6 +415,30 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
       cancelled = true
     }
   }, [activeStep, downloadComplete, downloadError, firmwarePackage, opened])
+
+  useEffect(() => {
+    if (postInstallPhase !== 'awaiting_disconnect') {
+      setRebootProgress(0)
+      return
+    }
+
+    const startedAt = performance.now()
+    let frameId = 0
+
+    const tick = (now: number) => {
+      const elapsed = now - startedAt
+      const percent = Math.min(100, Math.round((elapsed / REBOOT_PROGRESS_MS) * 100))
+      setRebootProgress(percent)
+      if (percent < 100) {
+        frameId = requestAnimationFrame(tick)
+      }
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(frameId)
+    }
+  }, [postInstallPhase])
 
   useEffect(() => {
     if (postInstallPhase !== 'awaiting_disconnect') return
@@ -630,7 +657,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
         return { label: 'Complete', enabled: true, onClick: handleNext }
       }
       if (verifiedFwVersion !== null) {
-        return { label: 'Select device', enabled: true, onClick: () => setActiveStep(3) }
+        return { label: 'Close', enabled: true, onClick: handleClose }
       }
       return { label: 'Close', enabled: true, onClick: handleClose }
     }
@@ -740,11 +767,13 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     }
 
     if (stepIndex === 2) {
+      const rebooting = postInstallPhase === 'awaiting_disconnect'
+      const progressValue = rebooting ? rebootProgress : installProgress
       const progressLabel = installError
         ? 'Failed'
         : installing
           ? installPhase
-          : postInstallPhase === 'awaiting_disconnect'
+          : rebooting
             ? 'Rebooting…'
             : installComplete
               ? 'Complete'
@@ -752,14 +781,11 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
 
       return (
         <>
-          <ProgressBar
-            value={installProgress}
-            animated={installing || postInstallPhase === 'awaiting_disconnect'}
-          />
+          <ProgressBar value={progressValue} animated={installing || rebooting} />
           <div className={classes.progressMeta}>
             <Text className={classes.progressLabel}>{progressLabel}</Text>
             <Text className={clsx(classes.progressValue, classes.progressPercent)}>
-              {installProgress}%
+              {progressValue}%
             </Text>
           </div>
         </>
