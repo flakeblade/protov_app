@@ -16,7 +16,14 @@ export function PreflightModal({
   onConfirm: () => void
 }) {
   return (
-    <Modal opened={opened} onClose={onCancel} title="Before you update" centered size="sm">
+    <Modal
+      opened={opened}
+      onClose={onCancel}
+      title="Before you update"
+      centered
+      size="sm"
+      closeButtonProps={{ 'aria-label': 'Close' }}
+    >
       <div className={classes.preflightBody}>
         <div className={classes.callout}>
           <Text className={classes.bodyText}>
