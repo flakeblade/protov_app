@@ -1,0 +1,29 @@
+---
+title: "Firmware Update"
+category: "Getting Started"
+description: "Update firmware in the lab or manually on older devices."
+---
+
+# Firmware Update
+
+## In-app updates (Lab)
+
+The lab update flow transfers signed firmware over SCPI (`SYST:FWUP:*`). **Firmware v1.6 or newer is required** — older builds do not expose DFU over SCPI.
+
+Open **Devices → Update firmware** on a connected unit to download, install, and verify the latest bundled release.
+
+## Manual update (below v1.6)
+
+If your device is running firmware older than v1.6, update it outside the lab first.
+
+### USB bootloader (UF2)
+
+1. Short the `UBOOT` jumper while connecting the USB cable.
+2. When the RP2040 appears as a USB drive, copy the signed firmware image (`.uf2`) onto the volume.
+3. The board reboots into the new firmware. Reconnect in the lab and confirm the version with `*IDN?`.
+
+### SWD (probe-rs)
+
+For development or recovery, flash over SWD using probe-rs. Connect the three pads next to the crystal (Data, Ground, Clock) and follow the build and flash steps in the [protov](https://github.com/flakeblade/protov) repository (`just build`, `just run`).
+
+After manual update reaches v1.6 or newer, in-app updates from the lab are available.

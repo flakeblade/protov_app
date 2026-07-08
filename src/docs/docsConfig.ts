@@ -24,6 +24,13 @@ export const docsConfig: DocConfigEntry[] = [
     type: 'guide',
   },
   {
+    slug: 'firmware-update',
+    title: 'Firmware Update',
+    category: 'Getting Started',
+    description: 'Update firmware in the lab or manually on devices below v1.6.',
+    type: 'guide',
+  },
+  {
     slug: 'hardware',
     title: 'Hardware',
     category: 'Hardware',
