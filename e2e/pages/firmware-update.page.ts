@@ -186,8 +186,12 @@ export class FirmwareUpdatePage {
       .toBe(true)
   }
 
+  preflightDialog(): Locator {
+    return this.nestedDialog('Before you update')
+  }
+
   async acknowledgePreflightAndContinue() {
-    const dialog = this.nestedDialog('Before you update')
+    const dialog = this.preflightDialog()
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Continue update' })).toBeDisabled()
     await dialog
@@ -199,16 +203,63 @@ export class FirmwareUpdatePage {
     await expect(dialog).toHaveCount(0)
   }
 
-  async cancelPreflight() {
-    const dialog = this.nestedDialog('Before you update')
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+  async cancelPreflightViaButton() {
+    const dialog = this.preflightDialog()
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(dialog).toHaveCount(0)
   }
 
+  async cancelPreflightViaClose() {
+    const dialog = this.preflightDialog()
+    await dialog.locator('header').getByLabel('Close', { exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+  }
+
+  async expectPreflightCancelledToCheck() {
+    await this.expectOpen()
+    await this.waitForActiveStep('Check')
+    await expect(this.preflightDialog()).toHaveCount(0)
+    await expect(this.primaryButton('Continue')).toBeEnabled()
+  }
+
   async expectPreflightWarning() {
-    const dialog = this.nestedDialog('Before you update')
-    await expect(dialog.getByText(/outputs will be turned off or may become unregulated/)).toBeVisible()
-    await expect(dialog.getByText(/disconnect from the browser during install and reboot/)).toBeVisible()
+    const dialog = this.preflightDialog()
+    await expect(
+      dialog.getByText(/Device outputs will be turned off or may become unregulated/),
+    ).toBeVisible()
+    await expect(
+      dialog.getByText(/disconnect from the browser during install and reboot/),
+    ).toBeVisible()
+  }
+
+  async expectUpToDateState(installedVersion: string) {
+    await this.waitForCheckOutcome('up-to-date')
+    await this.expectUpToDateBadge()
+    await this.expectVersionHero(installedVersion)
+    await expect(this.primaryButton('Continue')).toHaveCount(0)
+    await expect(this.primaryButton('Close')).toBeEnabled()
+  }
+
+  async expectDismissClosesImmediately(method: DismissMethod) {
+    await this.dismissMain(method)
+    await this.expectClosed()
+  }
+
+  async expectGuardedDismiss(
+    method: DismissMethod,
+    expectation: {
+      title: string | RegExp
+      body: string | RegExp
+      stayLabel: string | RegExp
+      leaveLabel: string | RegExp
+    },
+  ) {
+    await this.dismissMain(method)
+    await this.expectGuardDialog(expectation)
+    await this.stayOnGuard()
+    await this.dismissMain(method)
+    await this.expectGuardDialog(expectation)
+    await this.leaveGuard()
   }
 
   async waitForDownloadComplete(timeoutMs = 60_000) {
