@@ -1,3 +1,6 @@
+/** Minimum installed firmware for in-app DFU over SCPI (`SYST:FWUP:*`). */
+export const MIN_SCPI_FWUP_VERSION = '1.6'
+
 /** Compare dotted numeric version strings (e.g. 1.7.2 vs 1.0.0). Returns -1, 0, or 1. */
 export function compareVersions(left: string, right: string): number {
   const a = left.replace(/^v/i, '').split('.').map((part) => Number.parseInt(part, 10) || 0)
@@ -13,4 +16,8 @@ export function compareVersions(left: string, right: string): number {
 
 export function normalizeVersionTag(tag: string): string {
   return tag.replace(/^v/i, '')
+}
+
+export function supportsScpiFwup(fwVersion: string): boolean {
+  return compareVersions(fwVersion, MIN_SCPI_FWUP_VERSION) >= 0
 }

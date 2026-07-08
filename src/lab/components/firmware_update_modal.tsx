@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import {
   ActionIcon,
   Anchor,
@@ -30,7 +31,8 @@ import {
   type FirmwarePackage,
   type FirmwareRelease,
 } from '../firmware/releases'
-import { compareVersions } from '../firmware/version'
+import { compareVersions, MIN_SCPI_FWUP_VERSION, supportsScpiFwup } from '../firmware/version'
+import { getDocPath } from '../../docs/docsConfig'
 import { useDeviceStore } from '../devices/device_store'
 import type { LabDevice } from '../devices/device_types'
 import classes from './firmware_update_modal.module.css'
@@ -48,7 +50,13 @@ const REBOOT_PROGRESS_MS = 18_000
 
 const NOTES_COLLAPSE_THRESHOLD = 3
 
-type CheckState = 'checking' | 'available' | 'up-to-date' | 'incompatible' | 'error'
+type CheckState =
+  | 'checking'
+  | 'available'
+  | 'up-to-date'
+  | 'unsupported-fw'
+  | 'incompatible'
+  | 'error'
 type PostInstallPhase = 'none' | 'awaiting_disconnect' | 'disconnected'
 
 interface FirmwareUpdateModalProps {
@@ -161,18 +169,20 @@ function VersionHero({
   targetVersion,
   checking,
   upToDate,
+  blocked,
 }: {
   installedVersion: string
   targetVersion: string
   checking: boolean
   upToDate: boolean
+  blocked?: boolean
 }) {
-  if (upToDate) {
+  if (upToDate || blocked) {
     return (
       <div className={classes.versionHero}>
         <span className={classes.versionLabel}>Installed</span>
         <span className={classes.versionValue}>v{installedVersion}</span>
-        <span className={classes.upToDateBadge}>Up to date</span>
+        {upToDate ? <span className={classes.upToDateBadge}>Up to date</span> : null}
       </div>
     )
   }
@@ -364,6 +374,10 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
 
         setFirmwarePackage(pkg)
         setReleaseNotesOpen(parseReleaseNotes(latestRelease.body).items.length <= NOTES_COLLAPSE_THRESHOLD)
+        if (!supportsScpiFwup(device.fwVersion)) {
+          setCheckState('unsupported-fw')
+          return
+        }
         setCheckState(
           isUpdateAvailable(device.fwVersion, latestRelease.version) ? 'available' : 'up-to-date',
         )
@@ -486,6 +500,10 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
         }
         setFirmwarePackage(pkg)
         setReleaseNotesOpen(parseReleaseNotes(latestRelease.body).items.length <= NOTES_COLLAPSE_THRESHOLD)
+        if (!supportsScpiFwup(device.fwVersion)) {
+          setCheckState('unsupported-fw')
+          return
+        }
         setCheckState(
           isUpdateAvailable(device.fwVersion, latestRelease.version) ? 'available' : 'up-to-date',
         )
@@ -730,6 +748,22 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
           </>
         )
       }
+      if (checkState === 'unsupported-fw') {
+        return (
+          <>
+            <Text className={classes.errorText}>
+              In-app updates require firmware v{MIN_SCPI_FWUP_VERSION} or newer.
+            </Text>
+            <Text className={classes.mutedText}>
+              Update manually via USB bootloader or SWD: see the{' '}
+              <Anchor component={Link} to={getDocPath('firmware-update')} className={classes.docsLink}>
+                firmware update docs
+              </Anchor>
+              .
+            </Text>
+          </>
+        )
+      }
       if ((checkState === 'error' || checkState === 'incompatible') && checkError) {
         return (
           <>
@@ -913,6 +947,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
                 targetVersion={targetVersion}
                 checking={checkState === 'checking'}
                 upToDate={checkState === 'up-to-date'}
+                blocked={checkState === 'unsupported-fw'}
               />
 
               <div className={classes.leftScroll}>

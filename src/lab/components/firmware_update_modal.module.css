@@ -121,6 +121,7 @@
   font-weight: 500;
   color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
   margin-left: 4px;
+  text-transform: uppercase;
 }
 
 .leftScroll {
@@ -509,6 +510,17 @@
 .changelogExternalLink:hover {
   color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-2));
   text-decoration: underline;
+}
+
+.docsLink {
+  font-weight: 500;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.docsLink:hover {
+  color: light-dark(var(--mantine-color-dark-7), var(--mantine-color-gray-0));
 }
 
 .errorText {
