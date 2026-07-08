@@ -1,0 +1,20 @@
+{
+  "tag": "v1.7.2",
+  "version": "1.7.2",
+  "name": "v1.7.2",
+  "body": "Product hardware signing with ED25519, and persistent information storage on NVM.\r\n\r\n**Full Changelog**: https://github.com/flakeblade/protov/compare/v1.5.5...v1.7.2",
+  "publishedAt": "2026-07-07T20:50:05Z",
+  "bundledAt": "2026-06-01T12:00:00.000Z",
+  "assets": [
+    {
+      "name": "protov-1.7.2-A.1.bin",
+      "url": "/firmware/1.7.2/protov-1.7.2-A.1.bin",
+      "size": 4096
+    },
+    {
+      "name": "protov-1.7.2-A.1.sign.bin",
+      "url": "/firmware/1.7.2/protov-1.7.2-A.1.sign.bin",
+      "size": 64
+    }
+  ]
+}

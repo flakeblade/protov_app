@@ -27,6 +27,7 @@ const generalBrowserProjects = [
 const WEBKIT_TESTS = ['**/webkit.spec.ts'] as const
 
 export default defineConfig({
+  globalSetup: './e2e/global-setup.ts',
   testDir: './e2e/tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

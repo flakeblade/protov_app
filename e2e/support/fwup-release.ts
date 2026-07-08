@@ -16,7 +16,7 @@ export interface BundledReleaseInfo {
 
 const MANIFEST_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../public/firmware/release.json',
+  '../fixtures/release.json',
 )
 
 function formatBytes(size: number): string {
