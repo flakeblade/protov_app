@@ -95,6 +95,29 @@ function parseStatProgress(stat: string, total: number): FwupProgress | null {
   return null
 }
 
+const SESSION_START_DURATION_MS = 4000
+
+async function holdSessionStartPhase(
+  onProgress: ((progress: FwupProgress) => void) | undefined,
+  total: number,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  const message = 'Starting firmware update session…'
+  const startedAt = Date.now()
+
+  while (Date.now() - startedAt < SESSION_START_DURATION_MS) {
+    throwIfAborted(signal)
+    onProgress?.({
+      phase: 'prepare',
+      message,
+      bytesSent: 0,
+      bytesTotal: total,
+      percent: 2,
+    })
+    await sleep(40)
+  }
+}
+
 async function drainIncoming(transport: SerialTransport, timeoutMs: number): Promise<string[]> {
   if (transport.drainIncoming) {
     return transport.drainIncoming(timeoutMs)
@@ -233,15 +256,10 @@ export async function uploadFirmware(
   await flushScpiPort(transport)
   throwIfAborted(signal)
 
-  onProgress?.({
-    phase: 'prepare',
-    message: 'Starting firmware update session…',
-    bytesSent: 0,
-    bytesTotal: total,
-    percent: 2,
-  })
-
-  await queryExpectOk(transport, `SYST:FWUP:STAR ${total}`, FWUP_STAR_TIMEOUT_MS)
+  await Promise.all([
+    holdSessionStartPhase(onProgress, total, signal),
+    queryExpectOk(transport, `SYST:FWUP:STAR ${total}`, FWUP_STAR_TIMEOUT_MS),
+  ])
   await waitReceiving(transport, total, onProgress, signal)
 
   let offset = 0

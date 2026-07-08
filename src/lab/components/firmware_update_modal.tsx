@@ -48,6 +48,7 @@ const STEPS = [
 
 const REBOOT_WAIT_MS = 60_000
 const REBOOT_PROGRESS_MS = 18_000
+const SESSION_START_PROGRESS_MS = 4_000
 
 const NOTES_COLLAPSE_THRESHOLD = 3
 
@@ -289,6 +290,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   const [installing, setInstalling] = useState(false)
   const [postInstallPhase, setPostInstallPhase] = useState<PostInstallPhase>('none')
   const [rebootProgress, setRebootProgress] = useState(0)
+  const [sessionStartProgress, setSessionStartProgress] = useState(0)
   const [reconnecting, setReconnecting] = useState(false)
   const [reconnectError, setReconnectError] = useState<string | null>(null)
   const [verifiedFwVersion, setVerifiedFwVersion] = useState<string | null>(null)
@@ -320,6 +322,7 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     setInstalling(false)
     setPostInstallPhase('none')
     setRebootProgress(0)
+    setSessionStartProgress(0)
     setReconnecting(false)
     setReconnectError(null)
     setVerifiedFwVersion(null)
@@ -434,6 +437,30 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
       cancelled = true
     }
   }, [activeStep, downloadComplete, downloadError, firmwarePackage, opened])
+
+  useEffect(() => {
+    if (installPhase !== 'Starting firmware update session…') {
+      setSessionStartProgress(0)
+      return
+    }
+
+    const startedAt = performance.now()
+    let frameId = 0
+
+    const tick = (now: number) => {
+      const elapsed = now - startedAt
+      const percent = Math.min(100, Math.round((elapsed / SESSION_START_PROGRESS_MS) * 100))
+      setSessionStartProgress(percent)
+      if (elapsed < SESSION_START_PROGRESS_MS) {
+        frameId = requestAnimationFrame(tick)
+      }
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(frameId)
+    }
+  }, [installPhase])
 
   useEffect(() => {
     if (postInstallPhase !== 'awaiting_disconnect') {
@@ -814,7 +841,12 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
 
     if (stepIndex === 2) {
       const rebooting = postInstallPhase === 'awaiting_disconnect'
-      const progressValue = rebooting ? rebootProgress : installProgress
+      const sessionStarting = installing && installPhase === 'Starting firmware update session…'
+      const progressValue = rebooting
+        ? rebootProgress
+        : sessionStarting
+          ? sessionStartProgress
+          : installProgress
       const progressLabel = installError
         ? 'Failed'
         : installing
@@ -827,7 +859,10 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
 
       return (
         <>
-          <ProgressBar value={progressValue} animated={installing || rebooting} />
+          <ProgressBar
+            value={progressValue}
+            animated={installing || rebooting || sessionStarting}
+          />
           <div className={classes.progressMeta}>
             <Text className={classes.progressLabel}>{progressLabel}</Text>
             <Text className={clsx(classes.progressValue, classes.progressPercent)}>
