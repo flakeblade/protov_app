@@ -62,6 +62,25 @@ export async function presetPostRebootIdentity(
   })
 }
 
+/** Free stale mock connections and preset the slot the bridge will acquire on reconnect. */
+export async function prepareMockForReconnect(
+  mockControl: MockControlClient,
+  slot: number,
+  identity: { serial: string; fwVersion: string; hwVersion: string },
+) {
+  await mockControl.recoverPool()
+  await presetPostRebootIdentity(mockControl, slot, identity)
+}
+
+/** Release the pool so reconnect lands on slot 0 with its default profile (post-APPL mock behavior). */
+export async function prepareMockForReconnectDefault(
+  mockControl: MockControlClient,
+  slot: number,
+) {
+  await mockControl.recoverPool()
+  await mockControl.resetSlot(slot)
+}
+
 export async function openEligibleFirmwareUpdate(
   lab: LabPage,
   fwup: FirmwareUpdatePage,
@@ -84,6 +103,18 @@ export async function advanceToDownload(
   await fwup.expectPreflightWarning()
   await fwup.acknowledgePreflightAndContinue()
   await fwup.waitForActiveStep('Download')
+}
+
+/** Preflight + download complete, install step active (transfer not yet started). */
+export async function advanceToInstall(
+  lab: LabPage,
+  fwup: FirmwareUpdatePage,
+  mockControl: MockControlClient,
+) {
+  await advanceToDownload(lab, fwup, mockControl)
+  await fwup.waitForDownloadComplete()
+  await fwup.clickPrimary('Install update')
+  await fwup.waitForActiveStep('Install')
 }
 
 /** Delay each firmware .bin fetch so download-step UI assertions can run reliably. */

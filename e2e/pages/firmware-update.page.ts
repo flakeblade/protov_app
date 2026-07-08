@@ -162,7 +162,16 @@ export class FirmwareUpdatePage {
     return this.shell().locator('[class*="footerActions"]').getByRole('button', { name: label })
   }
 
+  private async dismissBlockingNotifications() {
+    await this.page.evaluate(() => {
+      for (const root of document.querySelectorAll('[class*="mantine-Notifications-root"]')) {
+        ;(root as HTMLElement).style.pointerEvents = 'none'
+      }
+    })
+  }
+
   async clickPrimary(label: string | RegExp) {
+    await this.dismissBlockingNotifications()
     await this.primaryButton(label).click()
   }
 
@@ -281,6 +290,58 @@ export class FirmwareUpdatePage {
     })
   }
 
+  async expectTransferBytesIncrease(timeoutMs = 120_000) {
+    const installStep = this.activeStep('install')
+    let previous = -1
+    await expect
+      .poll(
+        async () => {
+          const text = await installStep.textContent()
+          const match = text?.match(/Transferring firmware \((\d+)\/(\d+) bytes\)/)
+          if (!match) return false
+          const transferred = Number.parseInt(match[1]!, 10)
+          const total = Number.parseInt(match[2]!, 10)
+          if (total <= 0) return false
+          if (transferred <= previous) return false
+          previous = transferred
+          return true
+        },
+        { timeout: timeoutMs },
+      )
+      .toBe(true)
+  }
+
+  async expectAwaitingReboot(timeoutMs = 120_000) {
+    await this.waitForActiveStep('Install')
+    await expect(this.primaryButton('Waiting for reboot…')).toBeVisible({ timeout: timeoutMs })
+    await expect(this.footerStatus()).toContainText('Device rebooting — keep USB connected')
+    await expect(this.activeStep('install').getByText('Rebooting…')).toBeVisible()
+  }
+
+  /** Poll until install is waiting for reboot or the mock has already advanced to reconnect. */
+  async waitForRebootOrReconnect(timeoutMs = 120_000) {
+    await expect
+      .poll(
+        async () => {
+          const waitingReboot = await this.primaryButton('Waiting for reboot…').isVisible()
+          const onReconnect =
+            (await this.activeStep('reconnect').getAttribute('data-active')) === 'true'
+          return waitingReboot || onReconnect
+        },
+        { timeout: timeoutMs },
+      )
+      .toBe(true)
+  }
+
+  async expectInstallFailed(message?: string | RegExp) {
+    await this.waitForActiveStep('Install')
+    await expect(this.activeStep('install').getByText('Failed')).toBeVisible({ timeout: 30_000 })
+    if (message) {
+      await expect(this.footerStatus().getByText(message)).toBeVisible()
+    }
+    await expect(this.primaryButton('Close')).toBeEnabled()
+  }
+
   async waitForActiveStep(stepLabel: 'Check' | 'Download' | 'Install' | 'Reconnect' | 'Confirm') {
     const key = stepLabel.toLowerCase() as StepKey
     await expect(this.activeStep(key)).toBeVisible({ timeout: 20_000 })
@@ -360,6 +421,7 @@ export class FirmwareUpdatePage {
     await expect(this.activeStep('confirm').getByText('Version mismatch.', { exact: true })).toBeVisible()
     await expect(this.footerStatus().getByText(new RegExp(`expected v${expected}`, 'i'))).toBeVisible()
     await expect(this.footerStatus().getByText(new RegExp(`found v${found}`, 'i'))).toBeVisible()
-    await expect(this.primaryButton('Select device')).toBeEnabled()
+    await expect(this.primaryButton('Close')).toBeEnabled()
+    await expect(this.primaryButton('Complete')).toHaveCount(0)
   }
 }
