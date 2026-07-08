@@ -15,6 +15,20 @@ const theme = createTheme({
   },
   primaryColor: 'gray',
   defaultRadius: 'md',
+  components: {
+    Spotlight: {
+      styles: {
+        action: {
+          '&[data-selected]': {
+            backgroundColor: 'var(--mantine-color-blue-filled)',
+            color: 'var(--mantine-color-white)',
+            '--action-description-color': 'var(--mantine-color-white)',
+            '--action-description-opacity': '0.7',
+          },
+        },
+      },
+    },
+  },
 })
 
 createRoot(document.getElementById('root')!).render(

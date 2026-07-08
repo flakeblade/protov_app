@@ -1,12 +1,5 @@
 import { useMemo, useState } from 'react'
-import {
-  Badge,
-  Center,
-  Group,
-  Text,
-  useComputedColorScheme,
-  useMantineColorScheme,
-} from '@mantine/core'
+import { Badge, useComputedColorScheme, useMantineColorScheme } from '@mantine/core'
 import { Spotlight, spotlight } from '@mantine/spotlight'
 import {
   IconBook,
@@ -29,30 +22,22 @@ const ICON_SIZE = 22
 
 function SpotlightActionItem({ entry }: { entry: HomeSpotlightEntry }) {
   return (
-    <Spotlight.Action key={entry.id} onClick={entry.onClick}>
-      <Group wrap="nowrap" justify="space-between" w="100%" gap="sm">
-        <Group wrap="nowrap" gap="sm" style={{ flex: 1, minWidth: 0 }}>
-          <Center c="dimmed">{entry.icon}</Center>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Text size="sm" fw={500} truncate>
-              {entry.label}
-            </Text>
-            <Text size="xs" c="dimmed" truncate>
-              {entry.description}
-            </Text>
-          </div>
-        </Group>
+    <Spotlight.Action
+      label={entry.label}
+      description={entry.description}
+      leftSection={entry.icon}
+      rightSection={
         <Badge
           variant="light"
           color={docTypeBadgeColor(entry.docType)}
           size="sm"
           radius="sm"
-          style={{ flexShrink: 0 }}
         >
           {entry.docType}
         </Badge>
-      </Group>
-    </Spotlight.Action>
+      }
+      onClick={entry.onClick}
+    />
   )
 }
 
