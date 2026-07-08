@@ -38,17 +38,17 @@
 
 .core {
   filter: blur(72px);
-  opacity: light-dark(0.2, 0.28);
+  opacity: light-dark(0.3, 0.28);
 }
 
 .trail {
   filter: blur(96px);
-  opacity: light-dark(0.1, 0.16);
+  opacity: light-dark(0.16, 0.16);
 }
 
 .trailFar {
   filter: blur(128px);
-  opacity: light-dark(0.06, 0.1);
+  opacity: light-dark(0.1, 0.1);
 }
 
 .red {
@@ -92,6 +92,51 @@
     radial-gradient(
       circle at 60% 60%,
       rgba(170, 100, 240, 0.32) 0%,
+      rgba(130, 60, 210, 0) 68%
+    );
+}
+
+:where([data-mantine-color-scheme='light']) .red {
+  background:
+    radial-gradient(
+      circle at 38% 36%,
+      rgba(255, 90, 100, 0.72) 0%,
+      rgba(255, 50, 75, 0.32) 34%,
+      rgba(255, 40, 60, 0) 72%
+    ),
+    radial-gradient(
+      circle at 62% 58%,
+      rgba(255, 70, 95, 0.48) 0%,
+      rgba(255, 40, 60, 0) 68%
+    );
+}
+
+:where([data-mantine-color-scheme='light']) .blue {
+  background:
+    radial-gradient(
+      circle at 42% 40%,
+      rgba(70, 140, 255, 0.72) 0%,
+      rgba(40, 110, 255, 0.32) 34%,
+      rgba(40, 80, 255, 0) 72%
+    ),
+    radial-gradient(
+      circle at 58% 62%,
+      rgba(60, 125, 255, 0.48) 0%,
+      rgba(40, 80, 255, 0) 68%
+    );
+}
+
+:where([data-mantine-color-scheme='light']) .purple {
+  background:
+    radial-gradient(
+      circle at 40% 38%,
+      rgba(190, 100, 255, 0.68) 0%,
+      rgba(150, 70, 235, 0.3) 34%,
+      rgba(120, 50, 200, 0) 72%
+    ),
+    radial-gradient(
+      circle at 60% 60%,
+      rgba(165, 90, 245, 0.44) 0%,
       rgba(130, 60, 210, 0) 68%
     );
 }
