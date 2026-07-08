@@ -218,6 +218,12 @@ export class LabPage {
     await this.expectDevicesEmptyState()
   }
 
+  async openFirmwareUpdate(serial: string) {
+    const card = this.deviceCardBySerial(serial)
+    await card.getByRole('button', { name: 'Device options' }).click()
+    await this.page.getByRole('menuitem', { name: 'Check for updates' }).click()
+  }
+
   async clickDisconnect(serial: string) {
     const card = this.deviceCardBySerial(serial)
     await expect(card).toBeVisible()

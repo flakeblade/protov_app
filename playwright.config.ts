@@ -10,6 +10,7 @@ const CONNECTED_MOCK_TESTS = [
   '**/graphs-connected.spec.ts',
   '**/telemetry-connected.spec.ts',
   '**/hardware-state-sync.spec.ts',
+  '**/software-update-check.spec.ts',
 ] as const
 
 const generalBrowserProjects = [

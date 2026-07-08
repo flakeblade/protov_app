@@ -1,11 +1,17 @@
+import { FirmwareUpdatePage } from '../pages/firmware-update.page'
 import { test as base } from './test-base'
 import { MockControlClient, MOCK_SCPI_WS, mockControl } from '../support/mock-control'
 
 type LabDevicesFixtures = {
   mockControl: MockControlClient
+  fwup: FirmwareUpdatePage
 }
 
 export const test = base.extend<LabDevicesFixtures>({
+  fwup: async ({ page }, use) => {
+    await use(new FirmwareUpdatePage(page))
+  },
+
   page: async ({ page }, use) => {
     const bridgeMarker = MOCK_SCPI_WS.replace(/^wss?:\/\//, '')
     await page.addInitScript((marker: string) => {
@@ -43,7 +49,7 @@ export const test = base.extend<LabDevicesFixtures>({
         // Best-effort UI cleanup; still release mock slots below.
       }
       try {
-        await mockControl.releaseAllSlots()
+        await mockControl.recoverPool()
       } catch {
         await mockControl.resetAllSlots()
       }

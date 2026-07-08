@@ -109,6 +109,31 @@ function assertOk(response: ControlResponse, context: string): void {
   }
 }
 
+async function scpiRoundTrip(command: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(MOCK_SCPI_WS)
+    const timeout = setTimeout(() => {
+      ws.close()
+      reject(new Error(`SCPI socket timeout: ${command}`))
+    }, 5_000)
+
+    ws.addEventListener('open', () => {
+      ws.send(`${command}\n`)
+    })
+
+    ws.addEventListener('message', (event) => {
+      clearTimeout(timeout)
+      resolve(String(event.data).trim())
+      ws.close()
+    })
+
+    ws.addEventListener('error', () => {
+      clearTimeout(timeout)
+      reject(new Error(`SCPI socket unreachable at ${MOCK_SCPI_WS}`))
+    })
+  })
+}
+
 export interface MockChannelSnapshot {
   voltage: number
   current: number
@@ -151,6 +176,23 @@ export class MockControlClient {
     if (response.message !== 'released_all') {
       throw new Error(`Unexpected release_all response: ${response.message ?? '(empty)'}`)
     }
+  }
+
+  /** Abort any in-progress FWUP sessions left by prior tests, then reset slots. */
+  async recoverPool(): Promise<void> {
+    await this.releaseAllSlots()
+    for (let slot = 0; slot < MAX_MOCK_SLOTS; slot += 1) {
+      try {
+        const stat = await scpiRoundTrip('SYST:FWUP:STAT?')
+        if (stat !== 'IDLE') {
+          await scpiRoundTrip('SYST:FWUP:ABOR')
+        }
+      } catch {
+        // Pool may be temporarily busy; reset below still clears slot state.
+      }
+    }
+    await this.resetAllSlots()
+    await this.waitForFreeSlots(MAX_MOCK_SLOTS)
   }
 
   async loadState(slot: number, state: Record<string, unknown>): Promise<void> {
