@@ -33,17 +33,11 @@ export class FirmwareUpdatePage {
   }
 
   step(key: StepKey): Locator {
-    const shell = this.shell()
-    return shell
-      .locator('[class*="stepRow"]')
-      .filter({ has: shell.locator('[class*="stepTitle"]', { hasText: STEP_LABELS[key] }) })
+    return this.shell().locator(`[data-step="${key}"]`)
   }
 
   activeStep(key: StepKey): Locator {
-    const shell = this.shell()
-    return shell
-      .locator('[class*="stepRowActive"]')
-      .filter({ has: shell.locator('[class*="stepTitle"]', { hasText: STEP_LABELS[key] }) })
+    return this.shell().locator(`[data-step="${key}"][data-active="true"]`)
   }
 
   nestedDialog(title: string | RegExp): Locator {
