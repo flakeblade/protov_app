@@ -574,7 +574,21 @@
   gap: var(--mantine-spacing-sm);
 }
 
+.preflightBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+.preflightCheckboxLabel {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.45;
+}
+
 .callout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
   padding: var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-sm);
   background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));

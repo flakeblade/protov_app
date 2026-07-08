@@ -4,6 +4,7 @@ import {
   ActionIcon,
   Anchor,
   Button,
+  Checkbox,
   Collapse,
   Loader,
   Modal,
@@ -295,6 +296,8 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(true)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [preflightAckOpen, setPreflightAckOpen] = useState(false)
+  const [preflightAckChecked, setPreflightAckChecked] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const initialCheckStartedRef = useRef(false)
 
@@ -323,6 +326,8 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     setDetailsOpen(false)
     setReleaseNotesOpen(true)
     setCancelConfirmOpen(false)
+    setPreflightAckOpen(false)
+    setPreflightAckChecked(false)
     abortRef.current = null
   }, [])
 
@@ -564,7 +569,8 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
 
   const handleNext = () => {
     if (activeStep === 0 && checkState === 'available') {
-      setActiveStep(1)
+      setPreflightAckChecked(false)
+      setPreflightAckOpen(true)
       return
     }
     if (activeStep === 1 && downloadComplete) {
@@ -577,6 +583,12 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
     if (activeStep === 4 && verifySuccess) {
       handleClose()
     }
+  }
+
+  const handlePreflightConfirm = () => {
+    if (!preflightAckChecked) return
+    setPreflightAckOpen(false)
+    setActiveStep(1)
   }
 
   const handleBack = () => {
@@ -1045,6 +1057,43 @@ export function FirmwareUpdateModal({ opened, onClose, deviceId }: FirmwareUpdat
                 {primaryAction.label}
               </Button>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        opened={preflightAckOpen}
+        onClose={() => setPreflightAckOpen(false)}
+        title="Before you update"
+        centered
+        size="sm"
+      >
+        <div className={classes.preflightBody}>
+          <div className={classes.callout}>
+            <Text className={classes.bodyText}>
+              Device outputs will be turned off or may become unregulated before the software
+              update begins.
+            </Text>
+            <Text className={classes.bodyText}>
+              The device will disconnect from the browser during install and reboot. You will need to
+              reconnect it to finish the update.
+            </Text>
+          </div>
+
+          <Checkbox
+            checked={preflightAckChecked}
+            onChange={(event) => setPreflightAckChecked(event.currentTarget.checked)}
+            label="I understand and want to continue with the firmware update."
+            classNames={{ label: classes.preflightCheckboxLabel }}
+          />
+
+          <div className={classes.cancelActions}>
+            <Button variant="subtle" color="gray" onClick={() => setPreflightAckOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handlePreflightConfirm} disabled={!preflightAckChecked}>
+              Continue update
+            </Button>
           </div>
         </div>
       </Modal>
