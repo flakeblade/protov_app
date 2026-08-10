@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { isDfuE2eTest, SKIP_DFU_E2E } from './e2e/support/skip-dfu-e2e'
 
 const PORT = 5173
 const HOST = '127.0.0.1'
@@ -14,6 +15,10 @@ const CONNECTED_MOCK_TESTS = [
   '**/software-update-flow.spec.ts',
   '**/software-update-dfu.spec.ts',
 ] as const
+
+const ACTIVE_MOCK_TESTS = SKIP_DFU_E2E
+  ? CONNECTED_MOCK_TESTS.filter((pattern) => !isDfuE2eTest(pattern))
+  : CONNECTED_MOCK_TESTS
 
 const generalBrowserProjects = [
   { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
@@ -54,7 +59,7 @@ export default defineConfig({
     },
     {
       name: 'chromium-devices-mock',
-      testMatch: [...CONNECTED_MOCK_TESTS],
+      testMatch: [...ACTIVE_MOCK_TESTS],
       fullyParallel: false,
       workers: 1,
       use: { ...devices['Desktop Chrome'] },
