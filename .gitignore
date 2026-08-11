@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 public/firmware
+public/docs/content
+public/docs/res
+public/docs/bundle-manifest.json
 *.local
 
 # Playwright
