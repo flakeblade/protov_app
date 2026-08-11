@@ -1,0 +1,76 @@
+{
+  "docs": [
+    {
+      "slug": "index",
+      "sourceFile": "product.md",
+      "title": "Product overview",
+      "category": "Overview",
+      "description": "Features, specifications, and hardware summary for ProtoV MINI.",
+      "type": "guide"
+    },
+    {
+      "slug": "quick-start",
+      "sourceFile": "quick_start.md",
+      "title": "Quick start",
+      "category": "Getting Started",
+      "description": "Set up ProtoV MINI with USB-C PD only or with a computer for lab control.",
+      "type": "guide"
+    },
+    {
+      "slug": "compatibility",
+      "sourceFile": "compatibility.md",
+      "title": "Compatibility",
+      "category": "Getting Started",
+      "description": "Tested USB-C power sources, breadboards, and ProtoV App platforms.",
+      "type": "guide"
+    },
+    {
+      "slug": "hardware",
+      "sourceFile": "hardware.md",
+      "title": "Hardware",
+      "category": "Hardware",
+      "description": "Mechanical layout, dimensions, and design resources.",
+      "type": "reference"
+    },
+    {
+      "slug": "flashing",
+      "sourceFile": "flashing.md",
+      "title": "Flashing",
+      "category": "Firmware",
+      "description": "Update firmware via ProtoV App DFU, USB BOOTSEL, or SWD.",
+      "type": "guide"
+    },
+    {
+      "slug": "releases",
+      "sourceFile": "releases.md",
+      "title": "Release builds",
+      "category": "Firmware",
+      "description": "Signed release artifacts, verification, and custom keys.",
+      "type": "reference"
+    },
+    {
+      "slug": "development",
+      "sourceFile": "development.md",
+      "title": "Development",
+      "category": "Development",
+      "description": "Build firmware, run checks, and use the mock simulator.",
+      "type": "guide"
+    },
+    {
+      "slug": "repository",
+      "sourceFile": "repository.md",
+      "title": "Repository guide",
+      "category": "Development",
+      "description": "Workspace layout, hardware revisions, and software revisions.",
+      "type": "reference"
+    },
+    {
+      "slug": "roadmap",
+      "sourceFile": "roadmap.md",
+      "title": "Roadmap",
+      "category": "Project",
+      "description": "Planned features and ongoing engineering work.",
+      "type": "guide"
+    }
+  ]
+}
