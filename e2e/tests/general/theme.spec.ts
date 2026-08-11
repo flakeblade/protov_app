@@ -23,9 +23,9 @@ test.describe('Color scheme toggle', () => {
     await app.expectColorScheme('dark')
   })
 
-  test('docs getting started', async ({ app, docs }) => {
+  test('docs quick start', async ({ app, docs }) => {
     await docs.gotoOverview()
-    await docs.openGettingStarted()
+    await docs.openQuickStart()
     await app.expectColorScheme('light')
     await app.toggleColorScheme()
     await app.expectColorScheme('dark')

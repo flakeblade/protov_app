@@ -15,9 +15,9 @@ export class DocsPage {
     })
   }
 
-  async openGettingStarted() {
-    await this.docItem('Getting Started').click()
-    await this.expectGettingStarted()
+  async openQuickStart() {
+    await this.docItem('Quick start').click()
+    await this.expectQuickStart()
   }
 
   async openHardware() {
@@ -29,8 +29,8 @@ export class DocsPage {
     await this.page.waitForURL(/\/docs\/?$/)
   }
 
-  async expectGettingStarted() {
-    await this.page.waitForURL(new RegExp(`${routes.docs.gettingStarted}$`))
+  async expectQuickStart() {
+    await this.page.waitForURL(new RegExp(`${routes.docs.quickStart}$`))
   }
 
   async expectHardware() {

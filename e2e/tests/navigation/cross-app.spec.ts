@@ -14,8 +14,8 @@ test.describe('Cross-app navigation', () => {
     await app.clickNavLink('Docs')
     await docs.expectOverview()
 
-    await docs.openGettingStarted()
-    await docs.expectGettingStarted()
+    await docs.openQuickStart()
+    await docs.expectQuickStart()
 
     await app.clickNavLink('Home')
     await app.expectHome()

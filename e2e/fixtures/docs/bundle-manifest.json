@@ -1,0 +1,7 @@
+{
+  "sourceRepo": "flakeblade/protov",
+  "sourceRef": "mini",
+  "sourceCommit": "0000000000000000000000000000000000000000",
+  "bundledAt": "2026-01-01T00:00:00.000Z",
+  "files": ["content/product.md", "content/quick_start.md", "content/hardware.md"]
+}

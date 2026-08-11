@@ -11,7 +11,7 @@ export const routes = {
   },
   docs: {
     root: '/docs',
-    gettingStarted: '/docs/getting-started',
+    quickStart: '/docs/quick-start',
     hardware: '/docs/hardware',
   },
 } as const

@@ -11,10 +11,10 @@ test.describe('Docs sidebar', () => {
   })
 
   test('navigates between doc pages', async ({ page, docs }) => {
-    await docs.openGettingStarted()
-    await expect(page.getByRole('heading', { name: 'Getting Started' })).toBeVisible()
+    await docs.openQuickStart()
+    await expect(page.getByRole('heading', { name: 'Quick start', level: 1 })).toBeVisible()
 
     await docs.openHardware()
-    await expect(page.getByRole('heading', { name: 'Hardware' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Hardware', level: 1 })).toBeVisible()
   })
 })
