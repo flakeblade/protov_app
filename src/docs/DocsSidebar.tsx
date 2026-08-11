@@ -1,7 +1,8 @@
 import { Divider, NavLink, Stack, Text } from '@mantine/core'
 import { useNavigate } from 'react-router-dom'
-import { getDocPath, getDocsByCategory } from './docsConfig'
+import { getDocPath } from './docsConfig'
 import { useDocSlug } from './useDocSlug'
+import { useDocsConfigContext } from './useDocsConfig'
 
 interface DocsSidebarProps {
   onItemClick?: () => void
@@ -10,7 +11,7 @@ interface DocsSidebarProps {
 export function DocsSidebar({ onItemClick }: DocsSidebarProps) {
   const navigate = useNavigate()
   const currentSlug = useDocSlug()
-  const groupedDocs = getDocsByCategory()
+  const { groupedDocs } = useDocsConfigContext()
 
   return (
     <Stack gap="xs">

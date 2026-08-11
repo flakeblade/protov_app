@@ -9,7 +9,8 @@ import { SidebarBrand } from '../components/SidebarBrand'
 import { HomeSpotlight } from '../components/home/HomeSpotlight'
 import { DocViewer } from '../docs/DocViewer'
 import { DocsSidebar } from '../docs/DocsSidebar'
-import { validDocSlugs } from '../docs/docModules'
+import { validDocSlugs } from '../docs/docsConfig'
+import { DocsConfigProvider } from '../docs/useDocsConfig'
 import { useDocSlug } from '../docs/useDocSlug'
 import shellClasses from '../docs/docsSidebar.module.css'
 
@@ -36,7 +37,7 @@ export default function DocsPage() {
   }, [slug, isMobile, closeMobile])
 
   return (
-    <>
+    <DocsConfigProvider>
       <HomeSpotlight />
       <AppShell
         padding="md"
@@ -66,6 +67,6 @@ export default function DocsPage() {
           <DocViewer key={slug} slug={slug} />
         </AppShell.Main>
       </AppShell>
-    </>
+    </DocsConfigProvider>
   )
 }

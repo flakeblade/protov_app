@@ -90,7 +90,7 @@ export function StepDetail({
           </Text>
           <Text className={classes.mutedText}>
             Update manually via USB bootloader or SWD: see the{' '}
-            <Anchor component={Link} to={getDocPath('firmware-update')} className={classes.docsLink}>
+            <Anchor component={Link} to={getDocPath('flashing')} className={classes.docsLink}>
               firmware update docs
             </Anchor>
             .

@@ -1,87 +1,75 @@
+import docsConfigJson from './docs-config.json'
+
 export type DocType = 'guide' | 'reference' | 'troubleshooting'
 
 export interface DocConfigEntry {
   slug: string
+  sourceFile: string
   title: string
   category: string
   description: string
   type: DocType
 }
 
-export const docsConfig: DocConfigEntry[] = [
-  {
-    slug: 'index',
-    title: 'Overview',
-    category: 'Overview',
-    description: 'Introduction to ProtoV MINI documentation and product capabilities.',
-    type: 'guide',
-  },
-  {
-    slug: 'getting-started',
-    title: 'Getting Started',
-    category: 'Getting Started',
-    description: 'Unbox, connect, and bring your ProtoV MINI online for the first time.',
-    type: 'guide',
-  },
-  {
-    slug: 'firmware-update',
-    title: 'Firmware Update',
-    category: 'Getting Started',
-    description: 'Update firmware in the lab or manually on devices below v1.6.',
-    type: 'guide',
-  },
-  {
-    slug: 'hardware',
-    title: 'Hardware',
-    category: 'Hardware',
-    description: 'Headers, dimensions, connectors, and physical layout of the board.',
-    type: 'reference',
-  },
-  {
-    slug: 'power',
-    title: 'Power',
-    category: 'Power',
-    description: 'USB-C PD input, channel limits, and safe operating envelopes.',
-    type: 'reference',
-  },
-  {
-    slug: 'lab-interface',
-    title: 'Lab Interface',
-    category: 'Lab Interface',
-    description: 'Use the web lab to control rails, limits, and live measurements.',
-    type: 'guide',
-  },
-  {
-    slug: 'troubleshooting',
-    title: 'Troubleshooting',
-    category: 'Troubleshooting',
-    description: 'Resolve connection issues, faults, and unexpected measurement behavior.',
-    type: 'troubleshooting',
-  },
-  {
-    slug: 'reference',
-    title: 'Reference',
-    category: 'Reference',
-    description: 'Command reference, telemetry fields, and integration notes.',
-    type: 'reference',
-  },
-]
+export interface DocsConfigFile {
+  docs: DocConfigEntry[]
+}
 
-export function getDocsByCategory(): { category: string; docs: DocConfigEntry[] }[] {
+export interface DocsBundleManifest {
+  sourceRepo: string
+  sourceRef: string
+  sourceCommit: string
+  bundledAt: string
+  files: string[]
+}
+
+export const DOCS_CONFIG_URL = '/docs/docs-config.json'
+export const DOCS_MANIFEST_URL = '/docs/bundle-manifest.json'
+export const DOCS_CONTENT_BASE = '/docs/content'
+export const DOCS_ASSETS_BASE = '/docs/res'
+
+export function getDocPath(slug: string): string {
+  return slug === 'index' ? '/docs' : `/docs/${slug}`
+}
+
+export function getDocsByCategory(docs: readonly DocConfigEntry[]): {
+  category: string
+  docs: DocConfigEntry[]
+}[] {
   const categories = new Map<string, DocConfigEntry[]>()
 
-  for (const doc of docsConfig) {
+  for (const doc of docs) {
     const existing = categories.get(doc.category) ?? []
     existing.push(doc)
     categories.set(doc.category, existing)
   }
 
-  return Array.from(categories.entries()).map(([category, docs]) => ({
+  return Array.from(categories.entries()).map(([category, entries]) => ({
     category,
-    docs,
+    docs: entries,
   }))
 }
 
-export function getDocPath(slug: string): string {
-  return slug === 'index' ? '/docs' : `/docs/${slug}`
+export function buildSourceFileSlugMap(docs: readonly DocConfigEntry[]): Map<string, string> {
+  return new Map(docs.map((doc) => [doc.sourceFile, doc.slug]))
 }
+
+export function resolveDocSlug(slug: string | undefined, validSlugs: ReadonlySet<string>): string {
+  if (!slug || !validSlugs.has(slug)) {
+    return 'index'
+  }
+  return slug
+}
+
+export function getGitHubSourceUrl(
+  manifest: DocsBundleManifest,
+  sourceFile: string,
+): string {
+  return `https://github.com/${manifest.sourceRepo}/blob/${manifest.sourceCommit}/docs/${sourceFile}`
+}
+
+export const bundledDocsConfig = docsConfigJson as DocsConfigFile
+
+export const docsConfig = bundledDocsConfig.docs
+
+export const validDocSlugs = new Set(docsConfig.map((doc) => doc.slug))

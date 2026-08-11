@@ -1,4 +1,4 @@
-import { validDocSlugs } from '../docs/docModules'
+import { validDocSlugs } from '../docs/docsConfig'
 
 const LAB_PATH_KEY = 'protov-nav-lab-path'
 const DOCS_PATH_KEY = 'protov-nav-docs-path'
