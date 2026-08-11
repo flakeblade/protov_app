@@ -8,8 +8,9 @@
     "node": ">=24"
   },
   "scripts": {
-    "prebuild": "npm run bundle:firmware && mkdir -p public/models && cp src/assets/3d/scene_backup.glb public/models/scene.glb",
+    "prebuild": "npm run bundle:firmware && npm run bundle:docs && mkdir -p public/docs public/models && cp src/docs/docs-config.json public/docs/docs-config.json && cp src/assets/3d/scene_backup.glb public/models/scene.glb",
     "bundle:firmware": "node scripts/bundle-firmware.mjs",
+    "bundle:docs": "node scripts/bundle-docs.mjs",
     "dev": "vite",
     "predev:webserial": "npm run bundle:firmware",
     "dev:webserial": "vite --mode webserial",
@@ -28,7 +29,6 @@
     "@mantine/hooks": "^8.3.18",
     "@mantine/notifications": "^8.3.18",
     "@mantine/spotlight": "^8.3.18",
-    "@mdx-js/react": "^3.1.1",
     "@react-three/drei": "^10.4.4",
     "@react-three/fiber": "^9.2.0",
     "@tabler/icons-react": "^3.44.0",
@@ -38,15 +38,14 @@
     "highlight.js": "^11.11.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.0",
-    "rehype-highlight": "^7.0.2",
-    "remark-frontmatter": "^5.0.0",
+    "remark-github-blockquote-alert": "^1.0.10",
     "remark-gfm": "^4.0.1",
     "three": "^0.178.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@mdx-js/rollup": "^3.1.1",
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
