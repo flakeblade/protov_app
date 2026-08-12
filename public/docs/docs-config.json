@@ -17,12 +17,28 @@
       "type": "guide"
     },
     {
+      "slug": "interface-guide",
+      "sourceFile": "interface_guide.md",
+      "title": "Interface guide",
+      "category": "Getting Started",
+      "description": "Walk through ProtoV MINI's on-device UI, controls, and normal operating paths.",
+      "type": "guide"
+    },
+    {
       "slug": "compatibility",
       "sourceFile": "compatibility.md",
       "title": "Compatibility",
       "category": "Getting Started",
       "description": "Tested USB-C power sources, breadboards, and ProtoV App platforms.",
       "type": "guide"
+    },
+    {
+      "slug": "troubleshooting",
+      "sourceFile": "troubleshooting.md",
+      "title": "Troubleshooting",
+      "category": "Getting Started",
+      "description": "Boot failures, protection trips, fault screens, and misconfiguration.",
+      "type": "troubleshooting"
     },
     {
       "slug": "hardware",
