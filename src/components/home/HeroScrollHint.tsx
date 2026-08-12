@@ -25,7 +25,7 @@ export function HeroScrollHint({ scrollProgress }: HeroScrollHintProps) {
       {(styles) => (
         <div className={classes.anchor} style={styles} aria-hidden>
           <Box className={classes.hint}>
-            <IconChevronDown size={22} stroke={1.75} className={classes.chevron} />
+            <IconChevronDown size={72} stroke={0.55} className={classes.chevron} />
           </Box>
         </div>
       )}
