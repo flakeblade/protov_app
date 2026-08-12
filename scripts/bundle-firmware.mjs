@@ -2,6 +2,8 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { githubAuthHeaders } from './load-env.mjs'
+
 const REPO = 'flakeblade/protov'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appRoot = join(scriptDir, '..')
@@ -12,15 +14,7 @@ function normalizeVersionTag(tag) {
 }
 
 function githubHeaders() {
-  const headers = {
-    Accept: 'application/vnd.github+json',
-    'User-Agent': 'protov-app-bundle-firmware',
-  }
-  const token = process.env.GITHUB_TOKEN?.trim()
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
-  return headers
+  return githubAuthHeaders('protov-app-bundle-firmware')
 }
 
 function isFirmwareAssetName(name) {

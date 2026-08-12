@@ -20,10 +20,10 @@ npm run bundle:docs
 This downloads markdown and `docs/res/**` from the **default branch** of `flakeblade/protov` (currently `mini`). Override the ref with:
 
 ```bash
-DOCS_REF=mini GITHUB_TOKEN=... npm run bundle:docs
+DOCS_REF=mini AUTH_TOKEN=... npm run bundle:docs
 ```
 
-`GITHUB_TOKEN` is optional but recommended to avoid GitHub API rate limits.
+Copy `.env.example` to `.env` and set `AUTH_TOKEN` for local bundling. `AUTH_TOKEN` is also used in CI via the `github-pages-build` environment. `GITHUB_TOKEN` is accepted as a fallback.
 
 ## After bundling
 
